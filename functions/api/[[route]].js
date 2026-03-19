@@ -6,7 +6,7 @@
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
 };
 
 function json(data, s=200) {
@@ -21,6 +21,7 @@ async function sha256(str) {
 
 function uuid() { return crypto.randomUUID(); }
 function tok(req) { const h=req.headers.get('Authorization')||''; return h.startsWith('Bearer ')?h.slice(7).trim():null; }
+function isAdminKey(req) { return req.headers.get('X-Admin-Key')==='ABC123'; }
 
 async function getUser(req, env) {
   const t = tok(req); if (!t) return null;
@@ -35,11 +36,15 @@ async function needUser(req, env) {
   return u;
 }
 async function needStaff(req, env) {
+  // Accept X-Admin-Key header as staff
+  if (isAdminKey(req)) return { id: 0, username: 'admin', role: 'admin' };
   const u = await needUser(req, env);
   if (u.role!=='staff'&&u.role!=='admin') throw { s:403, m:'Staff only' };
   return u;
 }
 async function needAdmin(req, env) {
+  // Accept X-Admin-Key header as admin
+  if (isAdminKey(req)) return { id: 0, username: 'admin', role: 'admin' };
   const u = await needUser(req, env);
   if (u.role!=='admin') throw { s:403, m:'Admin only' };
   return u;
@@ -321,7 +326,8 @@ export async function onRequest(context) {
     if (method==='POST'&&route.endsWith('/approve')) {
       const b=await req.json().catch(()=>({}));
       await env.DB.prepare(`UPDATE calendars SET approval_status='approved',decline_reason=NULL WHERE id=?`).bind(cid).run();
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'approve',?)`).bind(cid,mod.id,b.comment||null).run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'approve',?)`).bind(cid,modId,b.comment||null).run();
       return json({ok:true});
     }
     if (method==='POST'&&route.endsWith('/decline')) {
@@ -329,30 +335,35 @@ export async function onRequest(context) {
       const cal=await env.DB.prepare(`SELECT * FROM calendars WHERE id=?`).bind(cid).first();
       const dc=(cal.decline_count||0)+1;
       await env.DB.prepare(`UPDATE calendars SET approval_status='declined',decline_reason=?,decline_count=? WHERE id=?`).bind(b.reason,dc,cid).run();
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,reason,comment) VALUES(?,?,'decline',?,?)`).bind(cid,mod.id,b.reason,b.comment||null).run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,reason,comment) VALUES(?,?,'decline',?,?)`).bind(cid,modId,b.reason,b.comment||null).run();
       if (cal.owner_id) await env.DB.prepare(`UPDATE users SET decline_count=decline_count+1 WHERE id=?`).bind(cal.owner_id).run();
       return json({ok:true,decline_count:dc});
     }
     if (method==='POST'&&route.endsWith('/comment')) {
       const b=await req.json().catch(()=>null); if(!b?.comment) return err('comment required');
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'comment',?)`).bind(cid,mod.id,b.comment).run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'comment',?)`).bind(cid,modId,b.comment).run();
       return json({ok:true});
     }
     if (method==='POST'&&route.endsWith('/warn')) {
       const b=await req.json().catch(()=>null); if(!b?.warning) return err('warning text required');
       await env.DB.prepare(`UPDATE calendars SET warning_text=? WHERE id=?`).bind(b.warning,cid).run();
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'warn',?)`).bind(cid,mod.id,b.warning).run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'warn',?)`).bind(cid,modId,b.warning).run();
       return json({ok:true});
     }
     if (method==='POST'&&route.endsWith('/remove-warning')) {
       await env.DB.prepare(`UPDATE calendars SET warning_text=NULL WHERE id=?`).bind(cid).run();
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'remove_warning','Warning removed')`).bind(cid,mod.id).run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action,comment) VALUES(?,?,'remove_warning','Warning removed')`).bind(cid,modId).run();
       return json({ok:true});
     }
     if (method==='POST'&&route.endsWith('/badge')) {
       const b=await req.json().catch(()=>({}));
       await env.DB.prepare(`UPDATE calendars SET verified_badge=? WHERE id=?`).bind(b.grant?1:0,cid).run();
-      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action) VALUES(?,?,?)`).bind(cid,mod.id,b.grant?'badge':'unbadge').run();
+      const modId = mod.id || null;
+      await env.DB.prepare(`INSERT INTO moderation_log(calendar_id,moderator_id,action) VALUES(?,?,?)`).bind(cid,modId,b.grant?'badge':'unbadge').run();
       return json({ok:true});
     }
   }
