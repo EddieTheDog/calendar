@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Calendar Hub — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3d;
+  --accent:#6ee7b7;--accent2:#818cf8;--text:#e8e8f0;--muted:#6b6b8a;
+  --danger:#f87171;--warn:#fbbf24;--info:#38bdf8;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(110,231,183,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(110,231,183,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* Topbar */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-brand{font-family:'Instrument Serif',serif;font-size:1.15rem;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)}
+.topbar-brand span{color:var(--accent)}
+.topbar-nav{display:flex;align-items:center;gap:8px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#0a0a0f;border-color:var(--accent)}.btn-primary:hover{opacity:.85}
+.btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.btn-danger{background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.3)}.btn-danger:hover{background:rgba(248,113,113,.2)}
+.btn-warn{background:rgba(251,191,36,.1);color:var(--warn);border-color:rgba(251,191,36,.3)}.btn-warn:hover{background:rgba(251,191,36,.2)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-full{width:100%;justify-content:center}
+
+/* Layout */
+.page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:40px 24px}
+.view{display:none}.view.active{display:block}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px}
+.card+.card{margin-top:16px}
+
+/* Auth box */
+.auth-box{max-width:400px;margin:80px auto}
+.auth-box h1{font-family:'Instrument Serif',serif;font-size:2rem;font-weight:400;text-align:center;margin-bottom:6px}
+.auth-box .sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:32px}
+.auth-tabs{display:flex;border:1px solid var(--border);border-radius:8px;margin-bottom:24px;overflow:hidden}
+.auth-tab{flex:1;padding:10px;font-family:'DM Mono',monospace;font-size:12px;background:transparent;border:none;cursor:pointer;color:var(--muted);transition:all .15s}
+.auth-tab.active{background:var(--accent);color:#0a0a0f;font-weight:500}
+
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 13px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;transition:border-color .2s;resize:vertical}
+.form-group select{appearance:none;cursor:pointer}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
+.form-hint{font-size:10px;color:var(--muted);margin-top:4px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Page header */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+.page-header h1{font-family:'Instrument Serif',serif;font-size:1.8rem;font-weight:400}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* Status badges */
+.badge{font-size:10px;padding:3px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.badge-approved{background:rgba(110,231,183,.12);color:var(--accent)}
+.badge-pending{background:rgba(251,191,36,.12);color:var(--warn)}
+.badge-declined{background:rgba(248,113,113,.12);color:var(--danger)}
+.badge-verified{background:rgba(56,189,248,.12);color:var(--info)}
+
+/* Calendar cards */
+.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-top:24px}
+.cal-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;transition:border-color .2s,transform .2s}
+.cal-card:hover{border-color:rgba(110,231,183,.3);transform:translateY(-1px)}
+.cal-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.cal-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.cal-name{font-family:'Instrument Serif',serif;font-size:1.1rem;flex:1}
+.cal-desc{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;min-height:32px}
+.cal-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cal-meta{font-size:10px;color:var(--muted)}
+.cal-actions{display:flex;gap:6px}
+
+/* Warning banner on cards */
+.cal-warning{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--warn);margin-bottom:12px;display:flex;align-items:flex-start;gap:8px}
+
+/* Decline box */
+.decline-box{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:14px;margin-bottom:14px}
+.decline-box .reason{font-size:12px;color:var(--danger);margin-bottom:8px}
+.decline-box .hint{font-size:11px;color:var(--muted)}
+
+/* Tables */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tbl-toolbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:10px 16px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+td{padding:11px 16px;font-size:12px;vertical-align:middle}
+.empty-row td{text-align:center;padding:48px;color:var(--muted)}
+
+/* Modals */
+.modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:30px;width:100%;max-width:520px;animation:mIn .18s ease;max-height:92vh;overflow-y:auto}
+.modal-lg{max-width:620px}
+.modal h2{font-family:'Instrument Serif',serif;font-size:1.35rem;font-weight:400;margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+
+/* Color picker */
+.color-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+.color-chip{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
+.color-chip:hover{transform:scale(1.15)}.color-chip.sel{border-color:white;transform:scale(1.15)}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.toggle-row label{font-size:12px;cursor:pointer}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+
+/* Time boxes */
+.time-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px}
+.time-box-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+/* 2FA QR placeholder */
+.qr-wrap{text-align:center;padding:24px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin:16px 0}
+.qr-secret{font-size:13px;letter-spacing:.15em;color:var(--accent);word-break:break-all;margin-top:8px}
+
+/* Toast */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:11px 22px;border-radius:8px;font-size:12px;z-index:999;transition:transform .25s ease;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:var(--danger);color:var(--danger)}
+
+/* Report */
+.report-reasons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.report-reason-chip{padding:6px 12px;border-radius:20px;font-size:11px;border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.report-reason-chip.sel,.report-reason-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(110,231,183,.08)}
+
+@media(max-width:600px){.form-row-2{grid-template-columns:1fr}.cal-grid{grid-template-columns:1fr}.topbar{padding:0 16px}}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <a href="/calendars" class="topbar-brand">📅 <span>Calendar</span> Hub</a>
+  <div class="topbar-nav" id="topbar-nav">
+    <button class="btn btn-ghost btn-sm" onclick="showView('auth')">Log in</button>
+    <button class="btn btn-primary btn-sm" onclick="showView('auth');setTab('register')">Sign up</button>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ── Auth ── -->
+<div id="view-auth" class="view active">
+  <div class="auth-box">
+    <h1>Calendar Hub</h1>
+    <p class="sub">Create and share public calendars</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="setTab('login')">Log in</button>
+      <button class="auth-tab" id="tab-register" onclick="setTab('register')">Sign up</button>
+    </div>
+
+    <!-- Login form -->
+    <div id="form-login">
+      <div class="form-group"><label>Username or email</label><input type="text" id="l-user" placeholder="username or email@..." autocomplete="username"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div id="totp-field" style="display:none">
+        <div class="form-group"><label>6-digit authenticator code</label><input type="text" id="l-totp" placeholder="000000" maxlength="6" inputmode="numeric"/></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Log in →</button>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--muted)">Don't have an account? <a onclick="setTab('register')" style="color:var(--accent);cursor:pointer">Sign up</a></div>
+    </div>
+
+    <!-- Register form -->
+    <div id="form-register" style="display:none">
+      <div class="form-group"><label>Username</label><input type="text" id="r-user" placeholder="cooluser" autocomplete="username"/><div class="form-hint">Letters, numbers, _ and - only</div></div>
+      <div class="form-group"><label>Email</label><input type="email" id="r-email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="r-pass" placeholder="••••••••" autocomplete="new-password"/><div class="form-hint">At least 6 characters</div></div>
+      <button class="btn btn-primary btn-full" onclick="doRegister()">Create account →</button>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--muted)">Already have an account? <a onclick="setTab('login')" style="color:var(--accent);cursor:pointer">Log in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Dashboard ── -->
+<div id="view-dash" class="view">
+  <div class="page-header">
+    <div>
+      <h1>My Calendars</h1>
+      <div class="page-sub" id="dash-sub"></div>
+    </div>
+    <button class="btn btn-primary" onclick="openSubmit()">+ Submit Calendar</button>
+  </div>
+
+  <div id="my-cals-list">
+    <div style="color:var(--muted);font-size:12px;padding:40px;text-align:center">Loading…</div>
+  </div>
+
+  <!-- Settings card -->
+  <div class="card" style="margin-top:32px">
+    <div style="font-size:14px;font-weight:500;margin-bottom:16px">Account Settings</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="openTwoFA()">🔐 Two-factor auth</button>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:12px" id="2fa-status"></div>
+  </div>
+</div>
+
+<!-- ── Events View ── -->
+<div id="view-events" class="view">
+  <div style="margin-bottom:16px">
+    <button class="btn btn-ghost btn-sm" onclick="showView('dash');loadMyCals()">← Back to my calendars</button>
+  </div>
+  <div class="card" id="ev-cal-banner" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div id="ev-banner-dot" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-family:'Instrument Serif',serif;font-size:1.2rem" id="ev-banner-name"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="ev-banner-meta"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a id="ev-ics-link" href="#" target="_blank" class="btn btn-ghost btn-sm">↗ .ics feed</a>
+      </div>
+    </div>
+  </div>
+  <div class="page-header">
+    <h1 id="ev-title">Events</h1>
+    <button class="btn btn-primary" onclick="openAddEvent()">+ Add Event</button>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-toolbar">
+      <input type="text" id="ev-search" placeholder="Search events…" oninput="filterEvs()" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);outline:none;width:200px"/>
+      <button class="btn btn-ghost btn-sm" onclick="loadEvents()">↻</button>
+    </div>
+    <table><thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
+    <tbody id="ev-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody></table>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<!-- ── Modal: Submit Calendar ── -->
+<div class="modal-bd" id="modal-submit" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="submit-title">Submit Calendar</h2>
+    <div class="form-row-2">
+      <div class="form-group"><label>Calendar Name *</label><input type="text" id="s-name" placeholder="e.g. LA Food Events" oninput="autoSlug()"/></div>
+      <div class="form-group"><label>Slug *</label><input type="text" id="s-slug" placeholder="la-food-events"/><div class="form-hint">URL key — letters, numbers, hyphens</div></div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="s-desc" placeholder="What is this calendar about?"></textarea></div>
+    <div class="form-group">
+      <label>Color</label>
+      <div class="color-row" id="submit-colors"></div>
+      <input type="hidden" id="s-color" value="#6ee7b7"/>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+      📋 Your calendar will be reviewed by our team before going public. You can only have 2 pending at a time.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-submit').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCal()">Submit for Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Event ── -->
+<div class="modal-bd" id="modal-event" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <h2 id="ev-modal-title">Add Event</h2>
+    <div class="form-group"><label>Title *</label><input type="text" id="e-title" placeholder="Event name"/></div>
+    <div class="form-group"><label>Description</label><textarea id="e-desc" placeholder="Details…"></textarea></div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Location</label><input type="text" id="e-loc" placeholder="Address or Zoom link"/></div>
+      <div class="form-group"><label>URL <span style="color:var(--muted)">(optional)</span></label><input type="url" id="e-url" placeholder="https://…"/></div>
+    </div>
+    <div class="toggle-row"><input type="checkbox" id="e-allday" onchange="toggleAllDay()"/><label for="e-allday">All-day event</label></div>
+    <div class="time-box"><div class="time-box-title">Start</div>
+      <div class="form-row-2" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0"><label>Date *</label><input type="date" id="e-sd"/></div>
+        <div class="form-group" id="g-st" style="margin-bottom:0"><label>Time</label><input type="time" id="e-st"/></div>
+      </div>
+    </div>
+    <div class="time-box"><div class="time-box-title">End <span style="color:var(--muted);font-size:10px">(optional)</span></div>
+      <div class="form-row-2" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0"><label>Date</label><input type="date" id="e-ed"/></div>
+        <div class="form-group" id="g-et" style="margin-bottom:0"><label>Time</label><input type="time" id="e-et"/></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-event').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Report ── -->
+<div class="modal-bd" id="modal-report" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Report Calendar</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Help us keep the platform safe. Reports are reviewed by staff.</p>
+    <div class="form-group"><label>Reason</label>
+      <div class="report-reasons">
+        <div class="report-reason-chip" onclick="selReason(this,'Spam')">Spam</div>
+        <div class="report-reason-chip" onclick="selReason(this,'Misinformation')">Misinformation</div>
+        <div class="report-reason-chip" onclick="selReason(this,'Inappropriate content')">Inappropriate</div>
+        <div class="report-reason-chip" onclick="selReason(this,'Copyright violation')">Copyright</div>
+        <div class="report-reason-chip" onclick="selReason(this,'Other')">Other</div>
+      </div>
+      <input type="hidden" id="rep-reason"/>
+    </div>
+    <div class="form-group"><label>Details <span style="color:var(--muted)">(optional)</span></label><textarea id="rep-details" placeholder="Tell us more…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-report').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" onclick="submitReport()">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: 2FA ── -->
+<div class="modal-bd" id="modal-2fa" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Two-Factor Authentication</h2>
+    <div id="2fa-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-2fa').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'https://calendar-8wm.pages.dev';
+const COLORS = ['#6ee7b7','#818cf8','#f472b6','#fb923c','#facc15','#38bdf8','#a78bfa','#34d399','#f87171','#e879f9'];
+
+let auth = JSON.parse(localStorage.getItem('cal_auth')||'null');
+let myCals = [], myEvs = [], currentCal = null, editEvId = null, editCalId = null, reportCalId = null;
+
+// ── Boot ─────────────────────────────────────────────────────
+window.onload = () => {
+  buildColors('submit-colors','s-color','#6ee7b7');
+  if (auth?.token) { updateTopbar(); showView('dash'); loadMyCals(); }
+  else showView('auth');
+};
+
+// ── Views ────────────────────────────────────────────────────
+function showView(n) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+n).classList.add('active');
+}
+function setTab(t) {
+  document.getElementById('form-login').style.display = t==='login'?'':'none';
+  document.getElementById('form-register').style.display = t==='register'?'':'none';
+  document.getElementById('tab-login').classList.toggle('active',t==='login');
+  document.getElementById('tab-register').classList.toggle('active',t==='register');
+}
+function updateTopbar() {
+  if (!auth) return;
+  const badge = auth.role==='admin'||auth.role==='staff' ? ' <span class="badge badge-verified">'+auth.role+'</span>' : '';
+  document.getElementById('topbar-nav').innerHTML =
+    `<span style="font-size:12px;color:var(--muted)">Hi, <strong style="color:var(--text)">${esc(auth.username)}</strong>${badge}</span>
+     <button class="btn btn-ghost btn-sm" onclick="showView('dash');loadMyCals()">Dashboard</button>
+     ${auth.role==='admin'||auth.role==='staff'?'<a href="/admin" class="btn btn-ghost btn-sm">Admin</a>':''}
+     <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>`;
+}
+
+// ── Auth ─────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('l-user').value.trim();
+  const password = document.getElementById('l-pass').value;
+  const totp_code = document.getElementById('l-totp').value.trim() || undefined;
+  const res = await api('POST','auth/login',{username,password,totp_code});
+  if (res.requires_totp) { document.getElementById('totp-field').style.display=''; toast('Enter your 6-digit authenticator code'); return; }
+  if (res.error) { toast(res.error,true); return; }
+  auth = res; localStorage.setItem('cal_auth',JSON.stringify(auth));
+  updateTopbar(); showView('dash'); loadMyCals();
+}
+async function doRegister() {
+  const username=document.getElementById('r-user').value.trim();
+  const email=document.getElementById('r-email').value.trim();
+  const password=document.getElementById('r-pass').value;
+  const res = await api('POST','auth/register',{username,email,password});
+  if (res.error) { toast(res.error,true); return; }
+  auth = res; localStorage.setItem('cal_auth',JSON.stringify(auth));
+  updateTopbar(); showView('dash'); loadMyCals(); toast('Account created! Welcome 🎉');
+}
+function doLogout() {
+  if (auth?.token) api('POST','auth/logout',null,auth.token);
+  auth=null; localStorage.removeItem('cal_auth');
+  document.getElementById('topbar-nav').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="showView('auth')">Log in</button><button class="btn btn-primary btn-sm" onclick="showView('auth');setTab('register')">Sign up</button>`;
+  showView('auth');
+}
+
+// ── My Calendars ─────────────────────────────────────────────
+async function loadMyCals() {
+  if (!auth) return;
+  document.getElementById('dash-sub').textContent = `@${auth.username}`;
+  const me = await api('GET','auth/me',null,auth.token);
+  if (me && !me.error) {
+    document.getElementById('2fa-status').textContent = me.totp_enabled ? '🔐 Two-factor authentication is enabled' : '⚠️ Two-factor authentication is disabled';
+    if (me.decline_count >= 2) {
+      document.getElementById('dash-sub').innerHTML += ` <span class="badge badge-declined">⚠️ ${me.decline_count} declines</span>`;
+    }
+  }
+  const cals = await api('GET','my/calendars',null,auth.token);
+  myCals = Array.isArray(cals) ? cals : [];
+  renderMyCals();
+}
+
+function renderMyCals() {
+  const el = document.getElementById('my-cals-list');
+  if (!myCals.length) {
+    el.innerHTML = `<div class="card" style="text-align:center;padding:48px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:12px">📅</div>
+      <div>You haven't submitted any calendars yet.</div>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="openSubmit()">Submit your first calendar</button>
+    </div>`; return;
+  }
+  el.innerHTML = `<div class="cal-grid">${myCals.map(c => calCardHTML(c, true)).join('')}</div>`;
+}
+
+function calCardHTML(c, owned=false) {
+  const statusBadge = {
+    approved:`<span class="badge badge-approved">✓ Approved</span>`,
+    pending:`<span class="badge badge-pending">⏳ Pending review</span>`,
+    declined:`<span class="badge badge-declined">✗ Declined</span>`,
+  }[c.approval_status||'approved'] || '';
+  const verBadge = c.verified_badge ? `<span class="badge badge-verified">✓ Verified</span>` : '';
+
+  let warningHTML = '';
+  if (c.warning_text) warningHTML = `<div class="cal-warning">⚠️ <span>${esc(c.warning_text)}</span></div>`;
+
+  let declineHTML = '';
+  if (c.approval_status==='declined' && c.decline_reason) {
+    declineHTML = `<div class="decline-box">
+      <div class="reason">Declined: ${esc(c.decline_reason)}</div>
+      <div class="hint">Edit the calendar to resubmit for review.</div>
+    </div>`;
+  }
+
+  const ownerActions = owned ? `
+    <button class="btn btn-ghost btn-sm" onclick="goEvents(${c.id})">📅 Events</button>
+    <button class="btn btn-ghost btn-sm" onclick="openEditCal(${c.id})">Edit</button>
+    ${c.approval_status!=='approved'?`<button class="btn btn-danger btn-sm" onclick="deleteCal(${c.id})">Delete</button>`:''}
+  ` : `
+    <button class="btn btn-ghost btn-sm" onclick="openReport(${c.id})">⚑ Report</button>
+  `;
+
+  return `<div class="cal-card">
+    ${warningHTML}${declineHTML}
+    <div class="cal-card-top">
+      <div class="cal-dot" style="background:${c.color||'#6ee7b7'}"></div>
+      <div class="cal-name">${esc(c.name)}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${verBadge}${statusBadge}</div>
+    </div>
+    <div class="cal-desc">${esc(c.description||'')}</div>
+    <div class="cal-footer">
+      <div class="cal-meta">${c.owner_username?`by ${esc(c.owner_username)} · `:''}${c.slug}</div>
+      <div class="cal-actions">${ownerActions}</div>
+    </div>
+  </div>`;
+}
+
+// ── Submit / Edit Calendar ────────────────────────────────────
+function openSubmit() {
+  editCalId = null;
+  document.getElementById('submit-title').textContent = 'Submit Calendar';
+  ['s-name','s-slug','s-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-color').value='#6ee7b7';
+  buildColors('submit-colors','s-color','#6ee7b7');
+  document.getElementById('modal-submit').style.display='flex';
+}
+function openEditCal(id) {
+  const c = myCals.find(x=>x.id===id); if(!c) return;
+  editCalId = id;
+  document.getElementById('submit-title').textContent = 'Edit Calendar';
+  document.getElementById('s-name').value=c.name;
+  document.getElementById('s-slug').value=c.slug;
+  document.getElementById('s-desc').value=c.description||'';
+  document.getElementById('s-color').value=c.color||'#6ee7b7';
+  buildColors('submit-colors','s-color',c.color||'#6ee7b7');
+  document.getElementById('modal-submit').style.display='flex';
+}
+function autoSlug() {
+  if (editCalId) return;
+  document.getElementById('s-slug').value = document.getElementById('s-name').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+}
+async function submitCal() {
+  const body = { name:document.getElementById('s-name').value.trim(), slug:document.getElementById('s-slug').value.trim(), description:document.getElementById('s-desc').value.trim(), color:document.getElementById('s-color').value };
+  if (!body.name||!body.slug) { toast('Name and slug are required',true); return; }
+  const ep = editCalId ? `my/calendars/${editCalId}` : 'my/calendars';
+  const res = await api(editCalId?'PUT':'POST', ep, body, auth.token);
+  if (res.error) { toast(res.error,true); return; }
+  document.getElementById('modal-submit').style.display='none';
+  toast(editCalId?'Calendar updated and resubmitted!':'Calendar submitted for review!');
+  loadMyCals();
+}
+async function deleteCal(id) {
+  if (!confirm('Delete this calendar?')) return;
+  const res = await api('DELETE',`my/calendars/${id}`,null,auth.token);
+  if (res.error) { toast(res.error,true); return; }
+  toast('Deleted.'); loadMyCals();
+}
+
+// ── Events ────────────────────────────────────────────────────
+function goEvents(calId) {
+  currentCal = myCals.find(c=>c.id===calId); if(!currentCal) return;
+  document.getElementById('ev-banner-dot').style.background=currentCal.color||'#6ee7b7';
+  document.getElementById('ev-banner-name').textContent=currentCal.name;
+  document.getElementById('ev-banner-meta').textContent=`/${currentCal.slug} · ${currentCal.approval_status}`;
+  document.getElementById('ev-ics-link').href=`${API}/api/calendars/${currentCal.slug}/ics`;
+  document.getElementById('ev-title').textContent=`Events — ${currentCal.name}`;
+  showView('events'); loadEvents();
+}
+async function loadEvents() {
+  if (!currentCal) return;
+  const r = await api('GET',`calendars/${currentCal.id}/events`,null,auth.token);
+  myEvs = Array.isArray(r)?r:[];
+  renderEvs(myEvs);
+}
+function renderEvs(evs) {
+  const tb=document.getElementById('ev-tbody');
+  if (!evs.length) { tb.innerHTML=`<tr class="empty-row"><td colspan="5">No events yet.</td></tr>`; return; }
+  tb.innerHTML=evs.map(ev=>`<tr>
+    <td><div style="font-weight:500">${esc(ev.title)}</div>${ev.description?`<div style="font-size:10px;color:var(--muted)">${esc(ev.description.slice(0,50))}${ev.description.length>50?'…':''}</div>`:''}</td>
+    <td style="white-space:nowrap;color:var(--muted)">${ev.start_date}${ev.end_date&&ev.end_date!==ev.start_date?` → ${ev.end_date}`:''}</td>
+    <td>${ev.all_day?'<span class="badge badge-approved">All day</span>':(ev.start_time?(ev.end_time?`${ev.start_time}–${ev.end_time}`:ev.start_time):'—')}</td>
+    <td style="color:var(--muted)">${esc(ev.location||'—')}</td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="openEditEvent(${ev.id})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteEvent(${ev.id})">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+function filterEvs() {
+  const q=document.getElementById('ev-search').value.toLowerCase();
+  renderEvs(myEvs.filter(e=>e.title.toLowerCase().includes(q)||(e.location||'').toLowerCase().includes(q)));
+}
+function toggleAllDay() {
+  const on=document.getElementById('e-allday').checked;
+  ['g-st','g-et'].forEach(id=>{document.getElementById(id).style.opacity=on?.35:1;document.getElementById(id).style.pointerEvents=on?'none':'';});
+  if(on){document.getElementById('e-st').value='';document.getElementById('e-et').value='';}
+}
+function openAddEvent() {
+  editEvId=null;
+  document.getElementById('ev-modal-title').textContent='Add Event';
+  ['e-title','e-desc','e-loc','e-url','e-sd','e-st','e-ed','e-et'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('e-allday').checked=false; toggleAllDay();
+  document.getElementById('modal-event').style.display='flex';
+}
+function openEditEvent(id) {
+  const ev=myEvs.find(e=>e.id===id); if(!ev) return;
+  editEvId=id;
+  document.getElementById('ev-modal-title').textContent='Edit Event';
+  document.getElementById('e-title').value=ev.title;
+  document.getElementById('e-desc').value=ev.description||'';
+  document.getElementById('e-loc').value=ev.location||'';
+  document.getElementById('e-url').value=ev.url||'';
+  document.getElementById('e-sd').value=ev.start_date||'';
+  document.getElementById('e-st').value=ev.start_time||'';
+  document.getElementById('e-ed').value=ev.end_date||'';
+  document.getElementById('e-et').value=ev.end_time||'';
+  document.getElementById('e-allday').checked=!!ev.all_day; toggleAllDay();
+  document.getElementById('modal-event').style.display='flex';
+}
+async function saveEvent() {
+  const title=document.getElementById('e-title').value.trim();
+  const start_date=document.getElementById('e-sd').value;
+  if(!title){toast('Title required',true);return;}
+  if(!start_date){toast('Start date required',true);return;}
+  const body={title,description:document.getElementById('e-desc').value.trim(),location:document.getElementById('e-loc').value.trim(),url:document.getElementById('e-url').value.trim(),start_date,start_time:document.getElementById('e-st').value||null,end_date:document.getElementById('e-ed').value||start_date,end_time:document.getElementById('e-et').value||null,all_day:document.getElementById('e-allday').checked};
+  const ep=editEvId?`calendars/${currentCal.id}/events/${editEvId}`:`calendars/${currentCal.id}/events`;
+  const res=await api(editEvId?'PUT':'POST',ep,body,auth.token);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-event').style.display='none';
+  toast(editEvId?'Event updated!':'Event added!'); loadEvents();
+}
+async function deleteEvent(id) {
+  if(!confirm('Delete this event?'))return;
+  const res=await api('DELETE',`calendars/${currentCal.id}/events/${id}`,null,auth.token);
+  if(res.error){toast(res.error,true);return;}
+  toast('Deleted.'); loadEvents();
+}
+
+// ── Report ────────────────────────────────────────────────────
+function openReport(calId) {
+  reportCalId=calId;
+  document.getElementById('rep-reason').value='';
+  document.getElementById('rep-details').value='';
+  document.querySelectorAll('.report-reason-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('modal-report').style.display='flex';
+}
+function selReason(el,r) {
+  document.querySelectorAll('.report-reason-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel'); document.getElementById('rep-reason').value=r;
+}
+async function submitReport() {
+  const reason=document.getElementById('rep-reason').value;
+  if(!reason){toast('Please select a reason',true);return;}
+  const res=await api('POST',`calendars/${reportCalId}/report`,{reason,details:document.getElementById('rep-details').value},auth?.token||null);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-report').style.display='none';
+  toast('Report submitted. Thank you.');
+}
+
+// ── 2FA ──────────────────────────────────────────────────────
+async function openTwoFA() {
+  const me=await api('GET','auth/me',null,auth.token);
+  const el=document.getElementById('2fa-content');
+  if (me.totp_enabled) {
+    el.innerHTML=`<p style="color:var(--muted);font-size:12px;margin-bottom:16px">2FA is <strong style="color:var(--accent)">enabled</strong>. Enter your current code to disable it.</p>
+      <div class="form-group"><label>Authenticator code</label><input type="text" id="2fa-dis-code" placeholder="000000" maxlength="6"/></div>
+      <button class="btn btn-danger" onclick="disable2FA()">Disable 2FA</button>`;
+  } else {
+    const setup=await api('POST','auth/2fa/setup',null,auth.token);
+    el.innerHTML=`<p style="color:var(--muted);font-size:12px;margin-bottom:12px">Scan this secret in your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm.</p>
+      <div class="qr-wrap">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Your secret key:</div>
+        <div class="qr-secret">${setup.secret}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px">Add manually in your app using the key above</div>
+      </div>
+      <div class="form-group"><label>Enter code to confirm</label><input type="text" id="2fa-en-code" placeholder="000000" maxlength="6" inputmode="numeric"/></div>
+      <button class="btn btn-primary" onclick="enable2FA()">Enable 2FA</button>`;
+  }
+  document.getElementById('modal-2fa').style.display='flex';
+}
+async function enable2FA() {
+  const code=document.getElementById('2fa-en-code').value;
+  const res=await api('POST','auth/2fa/verify',{code},auth.token);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-2fa').style.display='none';
+  document.getElementById('2fa-status').textContent='🔐 Two-factor authentication is enabled';
+  toast('2FA enabled!');
+}
+async function disable2FA() {
+  const code=document.getElementById('2fa-dis-code').value;
+  const res=await api('POST','auth/2fa/disable',{code},auth.token);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-2fa').style.display='none';
+  document.getElementById('2fa-status').textContent='⚠️ Two-factor authentication is disabled';
+  toast('2FA disabled.');
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+async function api(method, route, body=null, token=null) {
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if (token) opts.headers['Authorization']='Bearer '+token;
+  if (body) opts.body=JSON.stringify(body);
+  try {
+    const r=await fetch(`${API}/api/${route}`,opts);
+    return await r.json();
+  } catch(e) { return {error:e.message}; }
+}
+function buildColors(rowId,hidId,sel) {
+  document.getElementById(rowId).innerHTML=COLORS.map(c=>`<div class="color-chip${c===sel?' sel':''}" style="background:${c}" onclick="pickCol('${rowId}','${hidId}','${c}')"></div>`).join('');
+}
+function pickCol(r,h,c) { document.getElementById(h).value=c; buildColors(r,h,c); }
+function toast(msg,isErr=false) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.className=isErr?'err show':'show';
+  setTimeout(()=>t.className='',2800);
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Enter key on login
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'){ if(document.getElementById('form-login').style.display!=='none'&&document.activeElement?.id?.startsWith('l-'))doLogin(); if(document.getElementById('form-register').style.display!=='none'&&document.activeElement?.id?.startsWith('r-'))doRegister(); }});
+</script>
+</body>
+</html>
