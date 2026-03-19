@@ -140,7 +140,6 @@ footer{text-align:center;padding:32px 0 48px;font-size:11px;color:var(--muted);b
   .side-col{display:none}
   .main-col{padding:24px 16px 60px}
   .topbar{padding:0 16px}
-  #mobile-auth-trigger{display:flex!important}
 }
 </style>
 </head>
@@ -157,8 +156,8 @@ footer{text-align:center;padding:32px 0 48px;font-size:11px;color:var(--muted);b
       <a href="/dashboard" class="btn btn-ghost btn-sm">Dashboard</a>
     </div>
     <div id="topbar-guest" style="display:flex;align-items:center;gap:8px">
-      <a href="/dashboard" class="btn btn-ghost btn-sm">Log in</a>
-      <a href="/dashboard" class="btn btn-primary btn-sm">Sign up</a>
+      <button class="btn btn-ghost btn-sm" onclick="focusAuth('login')">Log in</button>
+      <button class="btn btn-primary btn-sm" onclick="focusAuth('register')">Sign up</button>
     </div>
   </div>
 </div>
@@ -197,6 +196,7 @@ footer{text-align:center;padding:32px 0 48px;font-size:11px;color:var(--muted);b
         <a href="/dashboard" class="account-link"><span class="icon">📅</span> My Calendars</a>
         <a href="/dashboard" class="account-link"><span class="icon">➕</span> Submit a Calendar</a>
         <a href="/dashboard" class="account-link"><span class="icon">⚙️</span> Settings &amp; 2FA</a>
+        <a href="/admin" class="account-link" id="acct-admin-link" style="display:none"><span class="icon">🛡</span> Admin Panel</a>
         <a onclick="doLogout()" class="account-link" style="cursor:pointer"><span class="icon">↩</span> Sign out</a>
       </div>
     </div>
@@ -232,13 +232,43 @@ footer{text-align:center;padding:32px 0 48px;font-size:11px;color:var(--muted);b
     <div class="cta-panel" id="panel-cta">
       <h3>Share your calendar</h3>
       <p>Create an account to submit your own public calendar. It'll go through a quick review before going live.</p>
-      <button class="btn btn-primary btn-full" onclick="setTab('register')">Get started →</button>
+      <button class="btn btn-primary btn-full" onclick="focusAuth('register')">Get started →</button>
     </div>
 
   </div>
 </div>
 
 <footer><div style="max-width:860px;margin:0 auto;padding:0 28px">Calendars update automatically — no app needed.</div></footer>
+
+<!-- Mobile auth modal (shown on small screens when clicking Log in / Sign up) -->
+<div class="modal-bd" id="mobile-auth-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:380px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div style="font-family:'Instrument Serif',serif;font-size:1.3rem">📅 Calendar Hub</div>
+      <button onclick="document.getElementById('mobile-auth-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="mob-tab-login" onclick="setMobileTab('login')">Log in</button>
+      <button class="auth-tab" id="mob-tab-register" onclick="setMobileTab('register')">Sign up</button>
+    </div>
+    <!-- Mobile Login -->
+    <div id="mob-form-login">
+      <div class="form-group"><label>Username or email</label><input type="text" id="mob-l-user" placeholder="username or email" autocomplete="username"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="mob-l-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div class="form-group" id="mob-totp-row" style="display:none"><label>Authenticator code</label><input type="text" id="mob-l-totp" placeholder="000000" maxlength="6" inputmode="numeric"/></div>
+      <div class="form-err" id="mob-l-err"></div>
+      <button class="btn btn-primary btn-full" onclick="doMobileLogin()">Log in →</button>
+    </div>
+    <!-- Mobile Register -->
+    <div id="mob-form-register" style="display:none">
+      <div class="form-group"><label>Username</label><input type="text" id="mob-r-user" placeholder="cooluser" autocomplete="username"/><div class="form-hint">Letters, numbers, _ and - only</div></div>
+      <div class="form-group"><label>Email</label><input type="email" id="mob-r-email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="mob-r-pass" placeholder="6+ characters" autocomplete="new-password"/></div>
+      <div class="form-err" id="mob-r-err"></div>
+      <button class="btn btn-primary btn-full" onclick="doMobileRegister()">Create account →</button>
+    </div>
+  </div>
+</div>
 
 <!-- Report modal -->
 <div class="modal-bd" id="modal-report" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -279,13 +309,44 @@ window.onload = () => {
 };
 
 // ── Panel switching ───────────────────────────────────────────
+function focusAuth(tab) {
+  // On desktop: show sidebar and focus the tab
+  // On mobile: scroll to the auth section
+  setTab(tab);
+  const panel = document.getElementById('panel-auth');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // If sidebar is hidden (mobile), show a compact modal version
+    if (window.innerWidth <= 860) {
+      openMobileAuth(tab);
+    }
+  }
+}
+
+function openMobileAuth(tab) {
+  document.getElementById('mobile-auth-modal').style.display = 'flex';
+  setMobileTab(tab);
+}
+
+function setMobileTab(t) {
+  document.getElementById('mob-form-login').style.display    = t==='login'    ? '' : 'none';
+  document.getElementById('mob-form-register').style.display = t==='register' ? '' : 'none';
+  document.getElementById('mob-tab-login').classList.toggle('active', t==='login');
+  document.getElementById('mob-tab-register').classList.toggle('active', t==='register');
+  document.getElementById('mob-l-err').textContent = '';
+  document.getElementById('mob-r-err').textContent = '';
+}
+
 function showAccountPanel() {
   document.getElementById('panel-auth').style.display = 'none';
   document.getElementById('panel-cta').style.display  = 'none';
   document.getElementById('panel-account').style.display = '';
-  document.getElementById('acct-name').textContent = auth.username + (auth.verified_badge ? ' ✓' : '');
+  const badge = auth.verified_badge ? ' <span style="color:var(--info);font-size:13px" title="Verified">✓</span>' : '';
+  document.getElementById('acct-name').innerHTML = esc(auth.username) + badge;
   const roleLabel = auth.role === 'admin' ? '🛡 Admin' : auth.role === 'staff' ? '⭐ Staff' : '👤 Member';
   document.getElementById('acct-role').textContent = roleLabel;
+  // Show admin link if staff/admin
+  document.getElementById('acct-admin-link').style.display = (auth.role === 'admin' || auth.role === 'staff') ? '' : 'none';
   document.getElementById('topbar-user').style.display = 'flex';
   document.getElementById('topbar-guest').style.display = 'none';
   document.getElementById('topbar-name').textContent = auth.username;
@@ -454,7 +515,49 @@ async function submitReport() {
   toast('Report submitted — thank you.');
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Mobile auth ───────────────────────────────────────────────
+async function doMobileLogin() {
+  const username  = document.getElementById('mob-l-user').value.trim();
+  const password  = document.getElementById('mob-l-pass').value;
+  const totp_code = document.getElementById('mob-l-totp').value.trim() || undefined;
+  document.getElementById('mob-l-err').textContent = '';
+  const res = await api('POST','auth/login',{username,password,totp_code});
+  if (res.requires_totp) {
+    document.getElementById('mob-totp-row').style.display = '';
+    document.getElementById('mob-l-totp').focus();
+    document.getElementById('mob-l-err').textContent = 'Enter your 6-digit authenticator code.';
+    return;
+  }
+  if (res.error) { document.getElementById('mob-l-err').textContent = res.error; return; }
+  auth = res; localStorage.setItem('cal_auth', JSON.stringify(auth));
+  document.getElementById('mobile-auth-modal').style.display = 'none';
+  showAccountPanel();
+  toast('Welcome back, ' + auth.username + '!');
+  loadCalendars();
+}
+
+async function doMobileRegister() {
+  const username = document.getElementById('mob-r-user').value.trim();
+  const email    = document.getElementById('mob-r-email').value.trim();
+  const password = document.getElementById('mob-r-pass').value;
+  document.getElementById('mob-r-err').textContent = '';
+  const res = await api('POST','auth/register',{username,email,password});
+  if (res.error) { document.getElementById('mob-r-err').textContent = res.error; return; }
+  auth = res; localStorage.setItem('cal_auth', JSON.stringify(auth));
+  document.getElementById('mobile-auth-modal').style.display = 'none';
+  showAccountPanel();
+  toast('Account created! Welcome 🎉');
+  loadCalendars();
+}
+
+// Enter key on mobile forms
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const id = document.activeElement?.id || '';
+  if (id.startsWith('mob-l-')) doMobileLogin();
+  if (id.startsWith('mob-r-')) doMobileRegister();
+});
+
 async function api(method, route, body=null, token=null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
