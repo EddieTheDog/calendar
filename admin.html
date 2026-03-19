@@ -1,314 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calendar Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26;
-      --border: #2a2a3d; --accent: #6ee7b7; --text: #e8e8f0;
-      --muted: #6b6b8a; --danger: #f87171; --warn: #fbbf24;
-    }
-    body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; }
-    body::before {
-      content: ''; position: fixed; inset: 0;
-      background-image: linear-gradient(rgba(110,231,183,0.02) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(110,231,183,0.02) 1px, transparent 1px);
-      background-size: 40px 40px; pointer-events: none; z-index: 0;
-    }
-    .topbar {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 32px; height: 60px; display: flex; align-items: center;
-      justify-content: space-between; position: sticky; top: 0; z-index: 50;
-    }
-    .topbar-left { display: flex; align-items: center; gap: 20px; }
-    .topbar-brand { font-family: 'Instrument Serif', serif; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
-    .topbar-brand span { color: var(--accent); }
-    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-    .breadcrumb-link { color: var(--accent); cursor: pointer; }
-    .breadcrumb-link:hover { text-decoration: underline; }
-    .topbar-actions { display: flex; gap: 10px; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
-      border-radius: 7px; font-family: 'DM Mono', monospace; font-size: 12px;
-      font-weight: 500; cursor: pointer; border: 1px solid transparent;
-      transition: all 0.15s; text-decoration: none; white-space: nowrap;
-    }
-    .btn-primary { background: var(--accent); color: #0a0a0f; border-color: var(--accent); }
-    .btn-primary:hover { opacity: 0.85; }
-    .btn-ghost { background: transparent; color: var(--muted); border-color: var(--border); }
-    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
-    .btn-danger { background: rgba(248,113,113,0.1); color: var(--danger); border-color: rgba(248,113,113,0.3); }
-    .btn-danger:hover { background: rgba(248,113,113,0.2); }
-    .btn-sm { padding: 5px 10px; font-size: 11px; }
-    .main { max-width: 1040px; margin: 0 auto; padding: 36px 24px; position: relative; z-index: 1; }
-    .view { display: none; }
-    .view.active { display: block; }
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
-    .page-header h1 { font-family: 'Instrument Serif', serif; font-size: 1.9rem; font-weight: 400; }
-    .page-header-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-    .stats { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
-    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 22px; flex: 1; min-width: 110px; }
-    .stat-value { font-family: 'Instrument Serif', serif; font-size: 1.8rem; color: var(--accent); }
-    .stat-label { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.1em; text-transform: uppercase; }
-    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .table-toolbar { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .toolbar-search { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; width: 200px; transition: border-color 0.2s; }
-    .toolbar-search:focus { border-color: var(--accent); }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; padding: 11px 18px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
-    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--surface2); }
-    td { padding: 13px 18px; font-size: 12px; vertical-align: middle; }
-    .empty-row td { text-align: center; padding: 56px; color: var(--muted); }
-    .cal-name-cell { display: flex; align-items: center; gap: 10px; }
-    .color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .name-text { font-weight: 500; }
-    .slug-text { font-size: 10px; color: var(--muted); }
-    .badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; display: inline-block; }
-    .badge-active { background: rgba(110,231,183,0.1); color: var(--accent); }
-    .badge-draft  { background: rgba(251,191,36,0.1); color: var(--warn); }
-    .badge-count  { background: rgba(129,140,248,0.1); color: #a5b4fc; }
-    .row-actions  { display: flex; gap: 6px; }
-    .cal-banner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .cal-banner-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-    .cal-banner-info { flex: 1; min-width: 160px; }
-    .cal-banner-name { font-family: 'Instrument Serif', serif; font-size: 1.3rem; }
-    .cal-banner-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
-    .cal-banner-actions { display: flex; gap: 8px; }
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 540px; animation: modalIn 0.18s ease; max-height: 92vh; overflow-y: auto; }
-    .modal-lg { max-width: 620px; }
-    .modal h2 { font-family: 'Instrument Serif', serif; font-size: 1.4rem; font-weight: 400; margin-bottom: 22px; }
-    @keyframes modalIn { from { opacity:0; transform: scale(0.96) translateY(8px); } to { opacity:1; transform: none; } }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
-      padding: 9px 13px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text);
-      outline: none; transition: border-color 0.2s; resize: vertical;
-    }
-    .form-group select { appearance: none; cursor: pointer; }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); }
-    .form-group textarea { min-height: 70px; }
-    .form-hint { font-size: 10px; color: var(--muted); margin-top: 4px; }
-    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .toggle-row label { font-size: 12px; cursor: pointer; }
-    input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
-    .color-row { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 6px; }
-    .color-chip { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s; flex-shrink: 0; }
-    .color-chip:hover { transform: scale(1.15); }
-    .color-chip.selected { border-color: white; transform: scale(1.15); }
-    .time-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-    .time-box-title { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-    .confirm-modal { max-width: 360px; text-align: center; }
-    .confirm-icon { font-size: 2.4rem; margin-bottom: 12px; }
-    .confirm-modal p { color: var(--muted); font-size: 12px; line-height: 1.7; margin-bottom: 4px; }
-    #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--accent); color: var(--accent); padding: 11px 22px; border-radius: 8px; font-size: 12px; z-index: 999; transition: transform 0.25s ease; pointer-events: none; }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-    #toast.error { border-color: var(--danger); color: var(--danger); }
-    @media (max-width: 640px) {
-      .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
-      .stats { flex-direction: column; }
-      td:nth-child(3), th:nth-child(3) { display: none; }
-    }
-  </style>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin — Calendar Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3d;--accent:#6ee7b7;--accent2:#818cf8;--text:#e8e8f0;--muted:#6b6b8a;--danger:#f87171;--warn:#fbbf24;--info:#38bdf8}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(110,231,183,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(110,231,183,.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* Lock screen */
+#lock{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:center}
+.lock-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 40px;width:360px;text-align:center}
+.lock-box h2{font-family:'Instrument Serif',serif;font-size:1.8rem;font-weight:400;margin-bottom:6px}
+.lock-box p{font-size:12px;color:var(--muted);margin-bottom:28px}
+.lock-box input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:14px;color:var(--text);outline:none;margin-bottom:12px;text-align:center;letter-spacing:.25em;transition:border-color .2s}
+.lock-box input:focus{border-color:var(--accent)}
+
+/* Layout */
+.shell{display:flex;min-height:100vh;position:relative;z-index:1}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0;padding:20px 0}
+.sidebar-brand{font-family:'Instrument Serif',serif;font-size:1.1rem;padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sidebar-brand span{color:var(--accent)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;border-left:2px solid transparent;text-decoration:none}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(110,231,183,.05)}
+.nav-section{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding:16px 20px 6px}
+.nav-badge{margin-left:auto;background:var(--danger);color:white;font-size:9px;padding:2px 6px;border-radius:10px}
+
+.content{flex:1;overflow:auto;padding:36px 32px}
+
+/* Topbar in shell */
+.top-strip{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.top-title{font-family:'Instrument Serif',serif;font-size:1.8rem;font-weight:400}
+.top-sub{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#0a0a0f;border-color:var(--accent)}.btn-primary:hover{opacity:.85}
+.btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.btn-danger{background:rgba(248,113,113,.1);color:var(--danger);border-color:rgba(248,113,113,.3)}.btn-danger:hover{background:rgba(248,113,113,.2)}
+.btn-warn{background:rgba(251,191,36,.1);color:var(--warn);border-color:rgba(251,191,36,.3)}.btn-warn:hover{background:rgba(251,191,36,.2)}
+.btn-info{background:rgba(56,189,248,.1);color:var(--info);border-color:rgba(56,189,248,.3)}.btn-info:hover{background:rgba(56,189,248,.2)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-full{width:100%;justify-content:center}
+
+/* Views */
+.view{display:none}.view.active{display:block}
+
+/* Stats */
+.stats{display:flex;gap:14px;margin-bottom:28px;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 22px;flex:1;min-width:110px}
+.stat-value{font-family:'Instrument Serif',serif;font-size:1.8rem;color:var(--accent)}
+.stat-label{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.1em;text-transform:uppercase}
+.stat-danger .stat-value{color:var(--danger)}
+.stat-warn .stat-value{color:var(--warn)}
+
+/* Tables */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+.tbl-toolbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tbl-search{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);outline:none;width:200px;transition:border-color .2s}
+.tbl-search:focus{border-color:var(--accent)}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:10px 16px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+td{padding:11px 16px;font-size:12px;vertical-align:middle}
+.empty-row td{text-align:center;padding:48px;color:var(--muted)}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Badges */
+.badge{font-size:10px;padding:3px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.b-approved{background:rgba(110,231,183,.1);color:var(--accent)}
+.b-pending{background:rgba(251,191,36,.1);color:var(--warn)}
+.b-declined{background:rgba(248,113,113,.1);color:var(--danger)}
+.b-verified{background:rgba(56,189,248,.1);color:var(--info)}
+.b-admin{background:rgba(129,140,248,.15);color:#a5b4fc}
+.b-staff{background:rgba(110,231,183,.1);color:var(--accent)}
+.b-user{background:rgba(107,107,138,.1);color:var(--muted)}
+.b-banned{background:rgba(248,113,113,.15);color:var(--danger)}
+
+/* Moderation panel */
+.mod-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.mod-card-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px}
+.mod-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.mod-info{flex:1}
+.mod-name{font-family:'Instrument Serif',serif;font-size:1.1rem;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.mod-meta{font-size:11px;color:var(--muted)}
+.mod-desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
+.mod-actions{padding:14px 20px;display:flex;gap:8px;flex-wrap:wrap;background:var(--surface2)}
+.mod-log{padding:16px 20px;border-top:1px solid var(--border)}
+.log-entry{display:flex;gap:10px;font-size:11px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.log-entry:last-child{border-bottom:none;margin-bottom:0}
+.log-action{min-width:80px;font-weight:500}
+.log-action.approve{color:var(--accent)}
+.log-action.decline{color:var(--danger)}
+.log-action.warn{color:var(--warn)}
+.log-action.badge,.log-action.unbadge{color:var(--info)}
+.log-action.comment{color:var(--muted)}
+.log-time{color:var(--muted);flex-shrink:0}
+
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 13px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;transition:border-color .2s;resize:vertical}
+.form-group select{appearance:none;cursor:pointer}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group textarea{min-height:80px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Modal */
+.modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:30px;width:100%;max-width:520px;animation:mIn .18s ease;max-height:92vh;overflow-y:auto}
+.modal h2{font-family:'Instrument Serif',serif;font-size:1.35rem;font-weight:400;margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+
+/* Toast */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:11px 22px;border-radius:8px;font-size:12px;z-index:999;transition:transform .25s ease;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:var(--danger);color:var(--danger)}
+
+@media(max-width:768px){.sidebar{display:none}.content{padding:20px 16px}.form-row-2{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="topbar-brand">📅 <span>Calendar</span> Admin</div>
-    <div class="breadcrumb" id="breadcrumb">
-      <span>Calendars</span>
-    </div>
-  </div>
-  <div class="topbar-actions">
-    <a href="/calendars" class="btn btn-ghost btn-sm" target="_blank">↗ Public page</a>
+<!-- Lock screen -->
+<div id="lock">
+  <div class="lock-box">
+    <div style="font-size:2rem;margin-bottom:12px">🔐</div>
+    <h2>Admin Access</h2>
+    <p>Enter the admin password to continue</p>
+    <input type="password" id="lock-pwd" placeholder="••••••••" autocomplete="current-password"/>
+    <button class="btn btn-primary btn-full" onclick="unlock()">Unlock →</button>
+    <div id="lock-err" style="color:var(--danger);font-size:11px;margin-top:10px"></div>
   </div>
 </div>
 
-<div class="main">
+<!-- Shell -->
+<div class="shell" id="shell" style="display:none">
 
-  <!-- ─── VIEW: Calendars ─── -->
-  <div id="view-calendars" class="view active">
-    <div class="page-header">
-      <div>
-        <h1>Calendars</h1>
-        <div class="page-header-sub">Click "Events" on any row to manage its events</div>
-      </div>
-      <button class="btn btn-primary" onclick="openCreateCal()">+ New Calendar</button>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="stat-value" id="stat-total">—</div><div class="stat-label">Calendars</div></div>
-      <div class="stat"><div class="stat-value" id="stat-active">—</div><div class="stat-label">Active</div></div>
-      <div class="stat"><div class="stat-value" id="stat-events">—</div><div class="stat-label">Total Events</div></div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <input class="toolbar-search" type="text" id="cal-search" placeholder="Search calendars…" oninput="filterCals()" />
-        <button class="btn btn-ghost btn-sm" onclick="loadCalendars()">↻ Refresh</button>
-      </div>
-      <table>
-        <thead><tr><th>Calendar</th><th>Slug</th><th>Events</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="cal-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">📅 <span>Admin</span></div>
+    <div class="nav-section">Moderation</div>
+    <a class="nav-item active" id="nav-pending" onclick="goView('pending')">⏳ Pending <span class="nav-badge" id="pending-count" style="display:none">0</span></a>
+    <a class="nav-item" id="nav-reports" onclick="goView('reports')">⚑ Reports <span class="nav-badge" id="report-count-badge" style="display:none">0</span></a>
+    <div class="nav-section">Content</div>
+    <a class="nav-item" id="nav-calendars" onclick="goView('calendars')">📅 All Calendars</a>
+    <div class="nav-section">Users</div>
+    <a class="nav-item" id="nav-users" onclick="goView('users')">👤 Users</a>
+    <div class="nav-section">Links</div>
+    <a class="nav-item" href="/calendars" target="_blank">↗ Public page</a>
+    <a class="nav-item" href="/dashboard">↗ Dashboard</a>
+  </nav>
 
-  <!-- ─── VIEW: Events ─── -->
-  <div id="view-events" class="view">
-    <div class="cal-banner">
-      <div class="cal-banner-dot" id="banner-dot"></div>
-      <div class="cal-banner-info">
-        <div class="cal-banner-name" id="banner-name"></div>
-        <div class="cal-banner-meta" id="banner-meta"></div>
-      </div>
-      <div class="cal-banner-actions">
-        <button class="btn btn-ghost btn-sm" onclick="openEditCal()">Edit Calendar</button>
-        <a id="ics-link" href="#" target="_blank" class="btn btn-ghost btn-sm">↗ .ics feed</a>
-      </div>
-    </div>
-    <div class="page-header">
-      <div>
-        <h1>Events</h1>
-        <div class="page-header-sub" id="ev-subtitle"></div>
-      </div>
-      <button class="btn btn-primary" onclick="openCreateEvent()">+ Add Event</button>
-    </div>
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <input class="toolbar-search" type="text" id="ev-search" placeholder="Search events…" oninput="filterEvs()" />
-        <button class="btn btn-ghost btn-sm" onclick="loadEvents()">↻ Refresh</button>
-      </div>
-      <table>
-        <thead><tr><th>Title</th><th>Start Date</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
-        <tbody id="ev-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Content -->
+  <main class="content">
 
+    <!-- ── Pending ── -->
+    <div id="view-pending" class="view active">
+      <div class="top-strip">
+        <div><div class="top-title">Review Queue</div><div class="top-sub">Calendars awaiting approval</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadPending()">↻ Refresh</button>
+      </div>
+      <div id="pending-list"><div style="color:var(--muted);font-size:12px;text-align:center;padding:40px">Loading…</div></div>
+    </div>
+
+    <!-- ── Reports ── -->
+    <div id="view-reports" class="view">
+      <div class="top-strip">
+        <div><div class="top-title">Reports</div><div class="top-sub">User-submitted reports on calendars</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadReports()">↻ Refresh</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Calendar</th><th>Reason</th><th>Reporter</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="reports-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── All Calendars ── -->
+    <div id="view-calendars" class="view">
+      <div class="top-strip">
+        <div><div class="top-title">All Calendars</div><div class="top-sub">Every calendar on the platform</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAllCals()">↻ Refresh</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-value" id="s-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-value" id="s-approved">—</div><div class="stat-label">Approved</div></div>
+        <div class="stat stat-warn"><div class="stat-value" id="s-pending">—</div><div class="stat-label">Pending</div></div>
+        <div class="stat stat-danger"><div class="stat-value" id="s-declined">—</div><div class="stat-label">Declined</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-toolbar">
+          <input class="tbl-search" type="text" placeholder="Search…" oninput="filterAllCals(this.value)"/>
+        </div>
+        <table>
+          <thead><tr><th>Calendar</th><th>Owner</th><th>Status</th><th>Flags</th><th>Actions</th></tr></thead>
+          <tbody id="all-cals-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Users ── -->
+    <div id="view-users" class="view">
+      <div class="top-strip">
+        <div><div class="top-title">Users</div><div class="top-sub">All registered accounts</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">↻ Refresh</button>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-toolbar">
+          <input class="tbl-search" type="text" placeholder="Search users…" oninput="filterUsers(this.value)"/>
+        </div>
+        <table>
+          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Declines</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
 </div>
 
-<!-- ─── MODAL: Calendar ─── -->
-<div class="modal-backdrop" id="cal-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+<!-- ── Modals ── -->
+
+<!-- Decline reason -->
+<div class="modal-bd" id="modal-decline" style="display:none" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal" onclick="event.stopPropagation()">
-    <h2 id="cal-modal-title">New Calendar</h2>
-    <div class="form-row-2">
-      <div class="form-group">
-        <label>Name *</label>
-        <input type="text" id="f-cal-name" placeholder="e.g. Community Events" oninput="autoSlug()" />
-      </div>
-      <div class="form-group">
-        <label>Slug *</label>
-        <input type="text" id="f-cal-slug" placeholder="community-events" />
-        <div class="form-hint">Used in the .ics URL</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Description</label>
-      <textarea id="f-cal-desc" placeholder="Shown to subscribers…"></textarea>
-    </div>
-    <div class="form-row-2">
-      <div class="form-group">
-        <label>Status</label>
-        <select id="f-cal-status"><option value="active">Active</option><option value="draft">Draft (hidden)</option></select>
-      </div>
-      <div class="form-group">
-        <label>Color</label>
-        <div class="color-row" id="cal-color-row"></div>
-        <input type="hidden" id="f-cal-color" value="#6ee7b7" />
-      </div>
-    </div>
+    <h2>Decline Calendar</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">This will notify the owner and increment their decline count. After 3 declines total, they cannot submit new calendars.</p>
+    <div class="form-group"><label>Reason * (shown to the owner)</label><textarea id="dec-reason" placeholder="Be specific — e.g. 'Calendar contains events that violate our spam policy.'"></textarea></div>
+    <div class="form-group"><label>Internal comment (optional)</label><textarea id="dec-comment" placeholder="Notes for other moderators…" style="min-height:56px"></textarea></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="document.getElementById('cal-modal').style.display='none'">Cancel</button>
-      <button class="btn btn-primary" onclick="saveCal()">Save Calendar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-decline').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" onclick="doDecline()">Decline</button>
     </div>
   </div>
 </div>
 
-<!-- ─── MODAL: Event ─── -->
-<div class="modal-backdrop" id="ev-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal modal-lg" onclick="event.stopPropagation()">
-    <h2 id="ev-modal-title">New Event</h2>
-
-    <div class="form-group">
-      <label>Title *</label>
-      <input type="text" id="f-ev-title" placeholder="e.g. Summer Meetup" />
-    </div>
-
-    <div class="form-group">
-      <label>Description</label>
-      <textarea id="f-ev-desc" placeholder="Details about this event…"></textarea>
-    </div>
-
-    <div class="form-row-2">
-      <div class="form-group">
-        <label>Location</label>
-        <input type="text" id="f-ev-location" placeholder="e.g. Central Park or Zoom link" />
-      </div>
-      <div class="form-group">
-        <label>URL <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
-        <input type="url" id="f-ev-url" placeholder="https://…" />
-      </div>
-    </div>
-
-    <div class="toggle-row">
-      <input type="checkbox" id="f-ev-allday" onchange="toggleAllDay()" />
-      <label for="f-ev-allday">All-day event</label>
-    </div>
-
-    <div class="time-box">
-      <div class="time-box-title">Start</div>
-      <div class="form-row-2" style="margin-bottom:0">
-        <div class="form-group" style="margin-bottom:0">
-          <label>Date *</label>
-          <input type="date" id="f-ev-start-date" />
-        </div>
-        <div class="form-group" id="grp-start-time" style="margin-bottom:0">
-          <label>Time</label>
-          <input type="time" id="f-ev-start-time" />
-        </div>
-      </div>
-    </div>
-
-    <div class="time-box">
-      <div class="time-box-title">End <span style="color:var(--muted);font-size:10px">(optional)</span></div>
-      <div class="form-row-2" style="margin-bottom:0">
-        <div class="form-group" style="margin-bottom:0">
-          <label>Date</label>
-          <input type="date" id="f-ev-end-date" />
-        </div>
-        <div class="form-group" id="grp-end-time" style="margin-bottom:0">
-          <label>Time</label>
-          <input type="time" id="f-ev-end-time" />
-        </div>
-      </div>
-    </div>
-
+<!-- Add warning -->
+<div class="modal-bd" id="modal-warn" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Add Warning</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Warning text is shown to subscribers on the public page above the calendar card.</p>
+    <div class="form-group"><label>Warning text *</label><textarea id="warn-text" placeholder="e.g. This calendar may contain outdated events. Please verify before attending."></textarea></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="document.getElementById('ev-modal').style.display='none'">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-warn').style.display='none'">Cancel</button>
+      <button class="btn btn-warn" onclick="doWarn()">Add Warning</button>
     </div>
   </div>
 </div>
 
-<!-- ─── MODAL: Confirm ─── -->
-<div class="modal-backdrop" id="confirm-modal" style="display:none">
-  <div class="modal confirm-modal">
-    <div class="confirm-icon">🗑️</div>
-    <h2 id="confirm-title">Delete?</h2>
-    <p id="confirm-msg"></p>
-    <div class="modal-actions" style="justify-content:center;border-top:none;padding-top:0;margin-top:10px">
-      <button class="btn btn-ghost" onclick="document.getElementById('confirm-modal').style.display='none'">Cancel</button>
-      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+<!-- Leave comment -->
+<div class="modal-bd" id="modal-comment" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Leave Comment</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Comments are recorded in the moderation log and are visible to other staff. They do not change the calendar's status.</p>
+    <div class="form-group"><label>Comment *</label><textarea id="comment-text" placeholder="Your note…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-comment').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="doComment()">Save Comment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ban user -->
+<div class="modal-bd" id="modal-ban" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Ban User</h2>
+    <div class="form-group"><label>Ban reason (shown to user)</label><input type="text" id="ban-reason" placeholder="Reason for ban…"/></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-ban').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" onclick="doBan()">Ban User</button>
     </div>
   </div>
 </div>
@@ -316,312 +284,287 @@
 <div id="toast"></div>
 
 <script>
-const API    = 'https://calendar-8wm.pages.dev';
-const COLORS = ['#6ee7b7','#818cf8','#f472b6','#fb923c','#facc15','#38bdf8','#a78bfa','#34d399','#f87171','#e879f9'];
+const API = 'https://calendar-8wm.pages.dev';
 
-let allCalendars = [];
-let allEvents    = [];
-let editCalId    = null;   // null = creating
-let editEvId     = null;   // null = creating
-let currentCal   = null;   // calendar we're viewing events for
-let calEventCounts = {};
+let adminToken = sessionStorage.getItem('admin_token');
+let allCalendarsData = [], allUsersData = [];
+let activeCalId = null, activeUserId = null;
 
-// ── View switching ────────────────────────────────────────────
-
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
-}
-
-function goCalendars() {
-  showView('calendars');
-  document.getElementById('breadcrumb').innerHTML = `<span>Calendars</span>`;
-  loadCalendars();
-}
-
-function goEvents(cal) {
-  currentCal = cal;
-  document.getElementById('banner-dot').style.background = cal.color || '#6ee7b7';
-  document.getElementById('banner-name').textContent = cal.name;
-  document.getElementById('banner-meta').textContent = `slug: ${cal.slug}  ·  status: ${cal.status}`;
-  document.getElementById('ics-link').href = `${API}/api/calendars/${cal.slug}/ics`;
-  document.getElementById('ev-subtitle').textContent = `Events in "${cal.name}"`;
-  document.getElementById('breadcrumb').innerHTML =
-    `<span class="breadcrumb-link" onclick="goCalendars()">Calendars</span>
-     <span style="color:var(--border)"> / </span>
-     <span>${esc(cal.name)}</span>`;
-  showView('events');
-  loadEvents();
-}
-
-// ── Calendars ─────────────────────────────────────────────────
-
-async function loadCalendars() {
-  try {
-    const res = await fetch(`${API}/api/calendars?all=1`);
-    allCalendars = await res.json();
-    // Fetch event counts in parallel
-    calEventCounts = {};
-    await Promise.all(allCalendars.map(async cal => {
-      try {
-        const r = await fetch(`${API}/api/calendars/${cal.id}/events`);
-        calEventCounts[cal.id] = (await r.json()).length;
-      } catch { calEventCounts[cal.id] = 0; }
-    }));
-    renderCals(allCalendars);
-    document.getElementById('stat-total').textContent  = allCalendars.length;
-    document.getElementById('stat-active').textContent = allCalendars.filter(c => c.status !== 'draft').length;
-    document.getElementById('stat-events').textContent = Object.values(calEventCounts).reduce((a,b)=>a+b,0);
-  } catch { showToast('Could not load — is the Worker deployed?', true); }
-}
-
-function renderCals(cals) {
-  const tbody = document.getElementById('cal-tbody');
-  if (!cals.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No calendars. Click "+ New Calendar".</td></tr>`; return; }
-  tbody.innerHTML = cals.map(c => `
-    <tr>
-      <td><div class="cal-name-cell"><div class="color-dot" style="background:${c.color||'#6ee7b7'}"></div><span class="name-text">${esc(c.name)}</span></div></td>
-      <td><span class="slug-text">${esc(c.slug)}</span></td>
-      <td><span class="badge badge-count">${calEventCounts[c.id]??0} event${calEventCounts[c.id]===1?'':'s'}</span></td>
-      <td><span class="badge ${c.status==='draft'?'badge-draft':'badge-active'}">${c.status==='draft'?'Draft':'Active'}</span></td>
-      <td><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" onclick='goEvents(${JSON.stringify(c)})'>📅 Events</button>
-        <button class="btn btn-ghost btn-sm" onclick="openEditCal(${c.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmDelCal(${c.id},'${esc(c.name)}')">Delete</button>
-      </div></td>
-    </tr>`).join('');
-}
-
-function filterCals() {
-  const q = document.getElementById('cal-search').value.toLowerCase();
-  renderCals(allCalendars.filter(c => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)));
-}
-
-// Color picker helper
-function buildColorPicker(rowId, hiddenId, selected) {
-  document.getElementById(rowId).innerHTML = COLORS.map(c =>
-    `<div class="color-chip${c===selected?' selected':''}" style="background:${c}" onclick="pickColor('${rowId}','${hiddenId}','${c}')"></div>`
-  ).join('');
-}
-function pickColor(rowId, hiddenId, c) {
-  document.getElementById(hiddenId).value = c;
-  buildColorPicker(rowId, hiddenId, c);
-}
-
-function autoSlug() {
-  if (editCalId) return;
-  document.getElementById('f-cal-slug').value = document.getElementById('f-cal-name').value
-    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-}
-
-function openCreateCal() {
-  editCalId = null;
-  document.getElementById('cal-modal-title').textContent = 'New Calendar';
-  ['f-cal-name','f-cal-slug','f-cal-desc'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-cal-status').value = 'active';
-  document.getElementById('f-cal-color').value  = '#6ee7b7';
-  buildColorPicker('cal-color-row','f-cal-color','#6ee7b7');
-  document.getElementById('cal-modal').style.display = 'flex';
-}
-
-function openEditCal(id) {
-  const cal = id ? allCalendars.find(c=>c.id===id) : currentCal;
-  if (!cal) return;
-  editCalId = cal.id;
-  document.getElementById('cal-modal-title').textContent = 'Edit Calendar';
-  document.getElementById('f-cal-name').value   = cal.name;
-  document.getElementById('f-cal-slug').value   = cal.slug;
-  document.getElementById('f-cal-desc').value   = cal.description||'';
-  document.getElementById('f-cal-status').value = cal.status||'active';
-  document.getElementById('f-cal-color').value  = cal.color||'#6ee7b7';
-  buildColorPicker('cal-color-row','f-cal-color', cal.color||'#6ee7b7');
-  document.getElementById('cal-modal').style.display = 'flex';
-}
-
-async function saveCal() {
-  const name = document.getElementById('f-cal-name').value.trim();
-  const slug = document.getElementById('f-cal-slug').value.trim();
-  if (!name||!slug) { showToast('Name and slug required',true); return; }
-  const body = { name, slug, description: document.getElementById('f-cal-desc').value.trim(), color: document.getElementById('f-cal-color').value, status: document.getElementById('f-cal-status').value };
-  try {
-    const res = await fetch(editCalId?`${API}/api/calendars/${editCalId}`:`${API}/api/calendars`,
-      { method: editCalId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error((await res.json()).error||res.statusText);
-    showToast(editCalId?'Calendar updated!':'Calendar created!');
-    document.getElementById('cal-modal').style.display = 'none';
-    if (currentCal && editCalId === currentCal.id) {
-      currentCal = {...currentCal,...body};
-      document.getElementById('banner-dot').style.background = body.color;
-      document.getElementById('banner-name').textContent = body.name;
-      document.getElementById('banner-meta').textContent = `slug: ${body.slug}  ·  status: ${body.status}`;
-      document.getElementById('ics-link').href = `${API}/api/calendars/${body.slug}/ics`;
+// ── Lock ─────────────────────────────────────────────────────
+async function unlock() {
+  const pwd = document.getElementById('lock-pwd').value;
+  const res = await apiFetch('POST','auth/login',{username:'admin_gate',password:pwd,admin_gate:true});
+  if (res.admin_gate) {
+    // Also log in as admin account
+    const loginRes = await apiFetch('POST','auth/login',{username:'admin',password:pwd});
+    if (loginRes.token) {
+      adminToken = loginRes.token;
+      sessionStorage.setItem('admin_token', adminToken);
     }
-    loadCalendars();
-  } catch(e) { showToast('Save failed: '+e.message,true); }
-}
-
-function confirmDelCal(id, name) {
-  document.getElementById('confirm-title').textContent = 'Delete Calendar?';
-  document.getElementById('confirm-msg').textContent   = `"${name}" and ALL its events will be permanently deleted.`;
-  document.getElementById('confirm-ok').onclick = () => delCal(id);
-  document.getElementById('confirm-modal').style.display = 'flex';
-}
-
-async function delCal(id) {
-  document.getElementById('confirm-modal').style.display = 'none';
-  try {
-    const res = await fetch(`${API}/api/calendars/${id}`, {method:'DELETE'});
-    if (!res.ok) throw new Error(await res.text());
-    showToast('Calendar deleted.');
-    loadCalendars();
-  } catch(e) { showToast('Delete failed: '+e.message,true); }
-}
-
-// ── Events ────────────────────────────────────────────────────
-
-async function loadEvents() {
-  if (!currentCal) return;
-  try {
-    const res = await fetch(`${API}/api/calendars/${currentCal.id}/events`);
-    allEvents = await res.json();
-    renderEvs(allEvents);
-  } catch { showToast('Could not load events',true); }
-}
-
-function renderEvs(evs) {
-  const tbody = document.getElementById('ev-tbody');
-  if (!evs.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No events yet. Click "+ Add Event".</td></tr>`; return; }
-  tbody.innerHTML = evs.map(ev => {
-    const timeStr = ev.all_day
-      ? '<span class="badge badge-active">All day</span>'
-      : (ev.start_time ? (ev.end_time ? `${ev.start_time} – ${ev.end_time}` : ev.start_time) : '—');
-    const dateStr = ev.end_date && ev.end_date !== ev.start_date
-      ? `${ev.start_date} → ${ev.end_date}` : ev.start_date;
-    return `<tr>
-      <td>
-        <div class="name-text">${esc(ev.title)}</div>
-        ${ev.description?`<div class="slug-text" style="margin-top:2px">${esc(ev.description.slice(0,55))}${ev.description.length>55?'…':''}</div>`:''}
-      </td>
-      <td style="white-space:nowrap;color:var(--muted)">${esc(dateStr)}</td>
-      <td>${timeStr}</td>
-      <td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ev.location||'—')}</td>
-      <td><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" onclick="openEditEvent(${ev.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmDelEv(${ev.id},'${esc(ev.title)}')">Delete</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function filterEvs() {
-  const q = document.getElementById('ev-search').value.toLowerCase();
-  renderEvs(allEvents.filter(e =>
-    e.title.toLowerCase().includes(q) ||
-    (e.description||'').toLowerCase().includes(q) ||
-    (e.location||'').toLowerCase().includes(q)
-  ));
-}
-
-function toggleAllDay() {
-  const on = document.getElementById('f-ev-allday').checked;
-  ['grp-start-time','grp-end-time'].forEach(id => {
-    document.getElementById(id).style.opacity = on ? '0.35' : '1';
-    document.getElementById(id).style.pointerEvents = on ? 'none' : '';
-  });
-  if (on) {
-    document.getElementById('f-ev-start-time').value = '';
-    document.getElementById('f-ev-end-time').value   = '';
+    document.getElementById('lock').style.display='none';
+    document.getElementById('shell').style.display='flex';
+    loadAll();
+  } else {
+    document.getElementById('lock-err').textContent = res.error||'Incorrect password';
   }
 }
+document.getElementById('lock-pwd').addEventListener('keydown',e=>{ if(e.key==='Enter') unlock(); });
 
-function openCreateEvent() {
-  editEvId = null;
-  document.getElementById('ev-modal-title').textContent = 'New Event';
-  ['f-ev-title','f-ev-desc','f-ev-location','f-ev-url',
-   'f-ev-start-date','f-ev-start-time','f-ev-end-date','f-ev-end-time']
-    .forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-ev-allday').checked = false;
-  toggleAllDay();
-  document.getElementById('ev-modal').style.display = 'flex';
+// Auto-unlock if session exists
+if (adminToken) {
+  document.getElementById('lock').style.display='none';
+  document.getElementById('shell').style.display='flex';
+  // Validate token
+  apiFetch('GET','auth/me',null,adminToken).then(u=>{
+    if(u.error){sessionStorage.removeItem('admin_token');location.reload();}
+    else loadAll();
+  });
 }
 
-function openEditEvent(id) {
-  const ev = allEvents.find(e => e.id === id); if (!ev) return;
-  editEvId = id;
-  document.getElementById('ev-modal-title').textContent  = 'Edit Event';
-  document.getElementById('f-ev-title').value            = ev.title;
-  document.getElementById('f-ev-desc').value             = ev.description  || '';
-  document.getElementById('f-ev-location').value         = ev.location     || '';
-  document.getElementById('f-ev-url').value              = ev.url          || '';
-  document.getElementById('f-ev-start-date').value       = ev.start_date   || '';
-  document.getElementById('f-ev-start-time').value       = ev.start_time   || '';
-  document.getElementById('f-ev-end-date').value         = ev.end_date     || '';
-  document.getElementById('f-ev-end-time').value         = ev.end_time     || '';
-  document.getElementById('f-ev-allday').checked         = !!ev.all_day;
-  toggleAllDay();
-  document.getElementById('ev-modal').style.display = 'flex';
+// ── Navigation ────────────────────────────────────────────────
+function goView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  const loaders={pending:loadPending,reports:loadReports,calendars:loadAllCals,users:loadUsers};
+  loaders[name]?.();
 }
 
-async function saveEvent() {
-  const title      = document.getElementById('f-ev-title').value.trim();
-  const start_date = document.getElementById('f-ev-start-date').value;
-  if (!title)      { showToast('Title is required',true);      return; }
-  if (!start_date) { showToast('Start date is required',true); return; }
-  const body = {
-    title,
-    description: document.getElementById('f-ev-desc').value.trim(),
-    location:    document.getElementById('f-ev-location').value.trim(),
-    url:         document.getElementById('f-ev-url').value.trim(),
-    start_date,
-    start_time:  document.getElementById('f-ev-start-time').value || null,
-    end_date:    document.getElementById('f-ev-end-date').value   || start_date,
-    end_time:    document.getElementById('f-ev-end-time').value   || null,
-    all_day:     document.getElementById('f-ev-allday').checked,
-  };
-  const url    = editEvId
-    ? `${API}/api/calendars/${currentCal.id}/events/${editEvId}`
-    : `${API}/api/calendars/${currentCal.id}/events`;
-  try {
-    const res = await fetch(url, { method: editEvId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error((await res.json()).error||res.statusText);
-    showToast(editEvId?'Event updated!':'Event added! ✓');
-    document.getElementById('ev-modal').style.display = 'none';
-    loadEvents();
-  } catch(e) { showToast('Save failed: '+e.message,true); }
+function loadAll() { loadPending(); loadReports(); }
+
+// ── Pending ───────────────────────────────────────────────────
+async function loadPending() {
+  const cals = await apiFetch('GET','mod/pending',null,adminToken);
+  const el = document.getElementById('pending-list');
+  const badge = document.getElementById('pending-count');
+  if (!Array.isArray(cals)||!cals.length) {
+    el.innerHTML=`<div style="text-align:center;padding:60px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:12px">✅</div><div>No pending calendars</div></div>`;
+    badge.style.display='none'; return;
+  }
+  badge.textContent=cals.length; badge.style.display='';
+  el.innerHTML = cals.map(c => pendingCard(c)).join('');
+  // Load mod logs
+  for (const c of cals) loadModLog(c.id);
 }
 
-function confirmDelEv(id, title) {
-  document.getElementById('confirm-title').textContent = 'Delete Event?';
-  document.getElementById('confirm-msg').textContent   = `"${title}" will be permanently removed from this calendar.`;
-  document.getElementById('confirm-ok').onclick = () => delEv(id);
-  document.getElementById('confirm-modal').style.display = 'flex';
+function pendingCard(c) {
+  return `<div class="mod-card" id="modcard-${c.id}">
+    <div class="mod-card-head">
+      <div class="mod-dot" style="background:${c.color||'#6ee7b7'}"></div>
+      <div class="mod-info">
+        <div class="mod-name">${esc(c.name)} ${c.verified_badge?'<span class="badge b-verified">✓ Verified</span>':''}</div>
+        <div class="mod-meta">Submitted by <strong>${esc(c.owner_username||'unknown')}</strong> &lt;${esc(c.owner_email||'')}&gt; · slug: <code>${esc(c.slug)}</code> · ${c.decline_count||0} prior decline(s)</div>
+        <div class="mod-desc">${esc(c.description||'No description provided.')}</div>
+      </div>
+    </div>
+    <div class="mod-actions">
+      <button class="btn btn-primary btn-sm" onclick="approve(${c.id})">✓ Approve</button>
+      <button class="btn btn-danger btn-sm" onclick="openDecline(${c.id})">✗ Decline</button>
+      <button class="btn btn-warn btn-sm" onclick="openWarn(${c.id})">⚠ Add Warning</button>
+      <button class="btn btn-info btn-sm" onclick="toggleBadge(${c.id},${c.verified_badge?0:1})">${c.verified_badge?'✗ Remove Badge':'✓ Grant Badge'}</button>
+      <button class="btn btn-ghost btn-sm" onclick="openComment(${c.id})">💬 Comment</button>
+    </div>
+    <div class="mod-log" id="log-${c.id}"><div style="font-size:11px;color:var(--muted)">Loading history…</div></div>
+  </div>`;
 }
 
-async function delEv(id) {
-  document.getElementById('confirm-modal').style.display = 'none';
-  try {
-    const res = await fetch(`${API}/api/calendars/${currentCal.id}/events/${id}`, {method:'DELETE'});
-    if (!res.ok) throw new Error(await res.text());
-    showToast('Event deleted.');
-    loadEvents();
-  } catch(e) { showToast('Delete failed: '+e.message,true); }
+async function loadModLog(calId) {
+  const log = await apiFetch('GET',`mod/calendar/${calId}/log`,null,adminToken);
+  const el = document.getElementById('log-'+calId); if(!el) return;
+  if (!Array.isArray(log)||!log.length) { el.innerHTML=`<div style="font-size:11px;color:var(--muted)">No moderation history yet.</div>`; return; }
+  el.innerHTML = `<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Moderation History</div>`
+    + log.map(e=>`<div class="log-entry">
+      <div class="log-action ${e.action}">${e.action}</div>
+      <div style="flex:1"><strong>${esc(e.mod_username||'system')}</strong>${e.reason?` — ${esc(e.reason)}`:''}${e.comment?`<br><span style="color:var(--muted)">${esc(e.comment)}</span>`:''}</div>
+      <div class="log-time">${e.created_at?.slice(0,16)||''}</div>
+    </div>`).join('');
 }
 
-// ── Utils ─────────────────────────────────────────────────────
-
-function showToast(msg, isError=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = isError?'error show':'show';
-  setTimeout(() => t.className='', 2800);
+async function approve(calId) {
+  const res = await apiFetch('POST',`mod/calendar/${calId}/approve`,{},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast('Calendar approved! ✓'); loadPending();
 }
 
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function openDecline(calId) {
+  activeCalId=calId;
+  document.getElementById('dec-reason').value='';
+  document.getElementById('dec-comment').value='';
+  document.getElementById('modal-decline').style.display='flex';
+}
+async function doDecline() {
+  const reason=document.getElementById('dec-reason').value.trim();
+  if(!reason){toast('Reason required',true);return;}
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/decline`,{reason,comment:document.getElementById('dec-comment').value.trim()},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-decline').style.display='none';
+  toast(`Calendar declined. Owner's total declines: ${res.decline_count}`); loadPending();
 }
 
-// ── Boot ──────────────────────────────────────────────────────
-buildColorPicker('cal-color-row','f-cal-color','#6ee7b7');
-loadCalendars();
+function openWarn(calId) { activeCalId=calId; document.getElementById('warn-text').value=''; document.getElementById('modal-warn').style.display='flex'; }
+async function doWarn() {
+  const warning=document.getElementById('warn-text').value.trim();
+  if(!warning){toast('Warning text required',true);return;}
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/warn`,{warning},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-warn').style.display='none'; toast('Warning added.');
+}
+
+async function removeWarning(calId) {
+  const res=await apiFetch('POST',`mod/calendar/${calId}/remove-warning`,{},adminToken);
+  if(res.error){toast(res.error,true);return;} toast('Warning removed.'); loadAllCals();
+}
+
+function openComment(calId) { activeCalId=calId; document.getElementById('comment-text').value=''; document.getElementById('modal-comment').style.display='flex'; }
+async function doComment() {
+  const comment=document.getElementById('comment-text').value.trim();
+  if(!comment){toast('Comment required',true);return;}
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/comment`,{comment},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-comment').style.display='none'; toast('Comment saved.');
+  loadModLog(activeCalId);
+}
+
+async function toggleBadge(calId, grant) {
+  const res=await apiFetch('POST',`mod/calendar/${calId}/badge`,{grant:!!grant},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast(grant?'Verified badge granted ✓':'Badge removed.'); loadPending();
+}
+
+// ── Reports ───────────────────────────────────────────────────
+async function loadReports() {
+  const reports=await apiFetch('GET','mod/reports',null,adminToken);
+  const tb=document.getElementById('reports-tbody');
+  const badge=document.getElementById('report-count-badge');
+  if(!Array.isArray(reports)||!reports.length){
+    tb.innerHTML=`<tr class="empty-row"><td colspan="5">No open reports</td></tr>`;
+    badge.style.display='none'; return;
+  }
+  badge.textContent=reports.length; badge.style.display='';
+  tb.innerHTML=reports.map(r=>`<tr>
+    <td><strong>${esc(r.cal_name)}</strong><div style="font-size:10px;color:var(--muted)">${esc(r.cal_slug)}</div></td>
+    <td><span style="color:var(--warn)">${esc(r.reason)}</span>${r.details?`<div style="font-size:10px;color:var(--muted)">${esc(r.details.slice(0,60))}</div>`:''}</td>
+    <td style="color:var(--muted)">${esc(r.reporter||'anonymous')}</td>
+    <td style="color:var(--muted)">${r.created_at?.slice(0,10)||''}</td>
+    <td><div class="row-actions">
+      <button class="btn btn-info btn-sm" onclick="dismissReport(${r.id},'reviewed')">Mark reviewed</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissReport(${r.id},'dismiss')">Dismiss</button>
+    </div></td>
+  </tr>`).join('');
+}
+async function dismissReport(id, action) {
+  const ep=action==='dismiss'?`mod/reports/${id}/dismiss`:`mod/reports/${id}/reviewed`;
+  const res=await apiFetch('POST',ep,{},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast(action==='dismiss'?'Report dismissed.':'Marked as reviewed.'); loadReports();
+}
+
+// ── All Calendars ─────────────────────────────────────────────
+async function loadAllCals() {
+  const cals=await apiFetch('GET','calendars?all=1',null,adminToken);
+  allCalendarsData=Array.isArray(cals)?cals:[];
+  document.getElementById('s-total').textContent=allCalendarsData.length;
+  document.getElementById('s-approved').textContent=allCalendarsData.filter(c=>c.approval_status==='approved').length;
+  document.getElementById('s-pending').textContent=allCalendarsData.filter(c=>c.approval_status==='pending').length;
+  document.getElementById('s-declined').textContent=allCalendarsData.filter(c=>c.approval_status==='declined').length;
+  renderAllCals(allCalendarsData);
+}
+function renderAllCals(cals) {
+  const tb=document.getElementById('all-cals-tbody');
+  if(!cals.length){tb.innerHTML=`<tr class="empty-row"><td colspan="5">No calendars</td></tr>`;return;}
+  tb.innerHTML=cals.map(c=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${c.color||'#6ee7b7'}"></div><div><strong>${esc(c.name)}</strong><div style="font-size:10px;color:var(--muted)">${esc(c.slug)}</div></div></div></td>
+    <td style="color:var(--muted)">${esc(c.owner_username||'—')}</td>
+    <td><span class="badge ${{approved:'b-approved',pending:'b-pending',declined:'b-declined'}[c.approval_status]||'b-user'}">${c.approval_status}</span></td>
+    <td>${c.verified_badge?'<span class="badge b-verified">✓ Verified</span>':''} ${c.warning_text?'<span class="badge b-declined">⚠ Warning</span>':''} ${c.report_count>0?`<span class="badge b-declined">⚑ ${c.report_count}</span>`:''}</td>
+    <td><div class="row-actions">
+      ${c.approval_status==='pending'?`<button class="btn btn-primary btn-sm" onclick="approve(${c.id})">Approve</button>`:''}
+      ${c.approval_status==='approved'?`<button class="btn btn-warn btn-sm" onclick="openWarn(${c.id})">⚠ Warn</button>`:''}
+      ${c.warning_text?`<button class="btn btn-ghost btn-sm" onclick="removeWarning(${c.id})">Remove warn</button>`:''}
+      <button class="btn btn-info btn-sm" onclick="toggleBadge(${c.id},${c.verified_badge?0:1})">${c.verified_badge?'Unbadge':'Badge'}</button>
+      <button class="btn btn-ghost btn-sm" onclick="openComment(${c.id})">Comment</button>
+      <button class="btn btn-danger btn-sm" onclick="hardDelete(${c.id},'${esc(c.name)}')">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+function filterAllCals(q) {
+  const lq=q.toLowerCase();
+  renderAllCals(allCalendarsData.filter(c=>c.name.toLowerCase().includes(lq)||c.slug.toLowerCase().includes(lq)||(c.owner_username||'').toLowerCase().includes(lq)));
+}
+async function hardDelete(id, name) {
+  if(!confirm(`Permanently delete "${name}" and all its events? This cannot be undone.`))return;
+  const res=await apiFetch('DELETE',`admin/calendars/${id}`,null,adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast('Calendar permanently deleted.'); loadAllCals();
+}
+
+// ── Users ─────────────────────────────────────────────────────
+async function loadUsers() {
+  const users=await apiFetch('GET','admin/users',null,adminToken);
+  allUsersData=Array.isArray(users)?users:[];
+  renderUsers(allUsersData);
+}
+function renderUsers(users) {
+  const tb=document.getElementById('users-tbody');
+  if(!users.length){tb.innerHTML=`<tr class="empty-row"><td colspan="6">No users</td></tr>`;return;}
+  tb.innerHTML=users.map(u=>`<tr>
+    <td><strong>${esc(u.username)}</strong>${u.verified_badge?' <span class="badge b-verified">✓</span>':''} ${u.banned?'<span class="badge b-banned">Banned</span>':''}</td>
+    <td style="color:var(--muted)">${esc(u.email)}</td>
+    <td><span class="badge ${{admin:'b-admin',staff:'b-staff',user:'b-user'}[u.role]||'b-user'}">${u.role}</span></td>
+    <td><span style="color:${u.decline_count>=3?'var(--danger)':u.decline_count>=2?'var(--warn)':'var(--muted)'}">${u.decline_count}</span></td>
+    <td style="color:var(--muted)">${u.created_at?.slice(0,10)||''}</td>
+    <td><div class="row-actions">
+      <select class="btn btn-ghost btn-sm" style="padding:5px 8px" onchange="changeRole(${u.id},this.value)">
+        <option value="">Change role…</option>
+        <option value="user"${u.role==='user'?' selected':''}>User</option>
+        <option value="staff"${u.role==='staff'?' selected':''}>Staff</option>
+        <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
+      </select>
+      <button class="btn btn-info btn-sm" onclick="toggleUserBadge(${u.id},${u.verified_badge?0:1})">${u.verified_badge?'Unbadge':'Badge'}</button>
+      ${u.banned
+        ?`<button class="btn btn-ghost btn-sm" onclick="unban(${u.id})">Unban</button>`
+        :`<button class="btn btn-danger btn-sm" onclick="openBan(${u.id})">Ban</button>`}
+    </div></td>
+  </tr>`).join('');
+}
+function filterUsers(q) {
+  const lq=q.toLowerCase();
+  renderUsers(allUsersData.filter(u=>u.username.toLowerCase().includes(lq)||u.email.toLowerCase().includes(lq)));
+}
+async function changeRole(uid, role) {
+  if(!role) return;
+  const res=await apiFetch('POST',`admin/users/${uid}/role`,{role},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast(`Role updated to ${role}`); loadUsers();
+}
+async function toggleUserBadge(uid, grant) {
+  const res=await apiFetch('POST',`admin/users/${uid}/badge`,{grant:!!grant},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast(grant?'Badge granted':'Badge removed'); loadUsers();
+}
+function openBan(uid) { activeUserId=uid; document.getElementById('ban-reason').value=''; document.getElementById('modal-ban').style.display='flex'; }
+async function doBan() {
+  const res=await apiFetch('POST',`admin/users/${activeUserId}/ban`,{reason:document.getElementById('ban-reason').value.trim()},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  document.getElementById('modal-ban').style.display='none'; toast('User banned.'); loadUsers();
+}
+async function unban(uid) {
+  const res=await apiFetch('POST',`admin/users/${uid}/unban`,{},adminToken);
+  if(res.error){toast(res.error,true);return;}
+  toast('User unbanned.'); loadUsers();
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+async function apiFetch(method, route, body=null, token=null) {
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(token) opts.headers['Authorization']='Bearer '+token;
+  if(body) opts.body=JSON.stringify(body);
+  try{const r=await fetch(`${API}/api/${route}`,opts); return await r.json();}
+  catch(e){return {error:e.message};}
+}
+function toast(msg,isErr=false){const t=document.getElementById('toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',2800);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
 </html>
