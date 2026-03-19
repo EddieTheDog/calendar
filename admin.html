@@ -154,7 +154,7 @@ td{padding:11px 16px;font-size:12px;vertical-align:middle}
     <div class="nav-section">Users</div>
     <a class="nav-item" id="nav-users" onclick="goView('users')">👤 Users</a>
     <div class="nav-section">Links</div>
-    <a class="nav-item" href="/calendars" target="_blank">↗ Public page</a>
+    <a class="nav-item" href="/" target="_blank">↗ Public page</a>
     <a class="nav-item" href="/dashboard">↗ Dashboard</a>
   </nav>
 
@@ -286,39 +286,33 @@ td{padding:11px 16px;font-size:12px;vertical-align:middle}
 <script>
 const API = 'https://calendar-8wm.pages.dev';
 
-let adminToken = sessionStorage.getItem('admin_token');
+// Admin uses a direct password header — no user account needed.
+// The API checks X-Admin-Key: ABC123 on all mod/admin endpoints.
+const ADMIN_PASSWORD = 'ABC123';
+let adminUnlocked = sessionStorage.getItem('admin_unlocked') === '1';
 let allCalendarsData = [], allUsersData = [];
 let activeCalId = null, activeUserId = null;
 
 // ── Lock ─────────────────────────────────────────────────────
-async function unlock() {
+function unlock() {
   const pwd = document.getElementById('lock-pwd').value;
-  const res = await apiFetch('POST','auth/login',{username:'admin_gate',password:pwd,admin_gate:true});
-  if (res.admin_gate) {
-    // Also log in as admin account
-    const loginRes = await apiFetch('POST','auth/login',{username:'admin',password:pwd});
-    if (loginRes.token) {
-      adminToken = loginRes.token;
-      sessionStorage.setItem('admin_token', adminToken);
-    }
+  if (pwd === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    sessionStorage.setItem('admin_unlocked', '1');
     document.getElementById('lock').style.display='none';
     document.getElementById('shell').style.display='flex';
     loadAll();
   } else {
-    document.getElementById('lock-err').textContent = res.error||'Incorrect password';
+    document.getElementById('lock-err').textContent = 'Incorrect password';
+    document.getElementById('lock-pwd').value = '';
   }
 }
-document.getElementById('lock-pwd').addEventListener('keydown',e=>{ if(e.key==='Enter') unlock(); });
+document.getElementById('lock-pwd').addEventListener('keydown', e => { if (e.key==='Enter') unlock(); });
 
-// Auto-unlock if session exists
-if (adminToken) {
+// Auto-unlock if already authenticated this session
+if (adminUnlocked) {
   document.getElementById('lock').style.display='none';
   document.getElementById('shell').style.display='flex';
-  // Validate token
-  apiFetch('GET','auth/me',null,adminToken).then(u=>{
-    if(u.error){sessionStorage.removeItem('admin_token');location.reload();}
-    else loadAll();
-  });
 }
 
 // ── Navigation ────────────────────────────────────────────────
@@ -335,7 +329,7 @@ function loadAll() { loadPending(); loadReports(); }
 
 // ── Pending ───────────────────────────────────────────────────
 async function loadPending() {
-  const cals = await apiFetch('GET','mod/pending',null,adminToken);
+  const cals = await apiFetch('GET','mod/pending',null);
   const el = document.getElementById('pending-list');
   const badge = document.getElementById('pending-count');
   if (!Array.isArray(cals)||!cals.length) {
@@ -370,7 +364,7 @@ function pendingCard(c) {
 }
 
 async function loadModLog(calId) {
-  const log = await apiFetch('GET',`mod/calendar/${calId}/log`,null,adminToken);
+  const log = await apiFetch('GET',`mod/calendar/${calId}/log`,null);
   const el = document.getElementById('log-'+calId); if(!el) return;
   if (!Array.isArray(log)||!log.length) { el.innerHTML=`<div style="font-size:11px;color:var(--muted)">No moderation history yet.</div>`; return; }
   el.innerHTML = `<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Moderation History</div>`
@@ -382,7 +376,7 @@ async function loadModLog(calId) {
 }
 
 async function approve(calId) {
-  const res = await apiFetch('POST',`mod/calendar/${calId}/approve`,{},adminToken);
+  const res = await apiFetch('POST',`mod/calendar/${calId}/approve`,{});
   if(res.error){toast(res.error,true);return;}
   toast('Calendar approved! ✓'); loadPending();
 }
@@ -396,7 +390,7 @@ function openDecline(calId) {
 async function doDecline() {
   const reason=document.getElementById('dec-reason').value.trim();
   if(!reason){toast('Reason required',true);return;}
-  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/decline`,{reason,comment:document.getElementById('dec-comment').value.trim()},adminToken);
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/decline`,{reason,comment:document.getElementById('dec-comment').value.trim()});
   if(res.error){toast(res.error,true);return;}
   document.getElementById('modal-decline').style.display='none';
   toast(`Calendar declined. Owner's total declines: ${res.decline_count}`); loadPending();
@@ -406,13 +400,13 @@ function openWarn(calId) { activeCalId=calId; document.getElementById('warn-text
 async function doWarn() {
   const warning=document.getElementById('warn-text').value.trim();
   if(!warning){toast('Warning text required',true);return;}
-  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/warn`,{warning},adminToken);
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/warn`,{warning});
   if(res.error){toast(res.error,true);return;}
   document.getElementById('modal-warn').style.display='none'; toast('Warning added.');
 }
 
 async function removeWarning(calId) {
-  const res=await apiFetch('POST',`mod/calendar/${calId}/remove-warning`,{},adminToken);
+  const res=await apiFetch('POST',`mod/calendar/${calId}/remove-warning`,{});
   if(res.error){toast(res.error,true);return;} toast('Warning removed.'); loadAllCals();
 }
 
@@ -420,21 +414,21 @@ function openComment(calId) { activeCalId=calId; document.getElementById('commen
 async function doComment() {
   const comment=document.getElementById('comment-text').value.trim();
   if(!comment){toast('Comment required',true);return;}
-  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/comment`,{comment},adminToken);
+  const res=await apiFetch('POST',`mod/calendar/${activeCalId}/comment`,{comment});
   if(res.error){toast(res.error,true);return;}
   document.getElementById('modal-comment').style.display='none'; toast('Comment saved.');
   loadModLog(activeCalId);
 }
 
 async function toggleBadge(calId, grant) {
-  const res=await apiFetch('POST',`mod/calendar/${calId}/badge`,{grant:!!grant},adminToken);
+  const res=await apiFetch('POST',`mod/calendar/${calId}/badge`,{grant:!!grant});
   if(res.error){toast(res.error,true);return;}
   toast(grant?'Verified badge granted ✓':'Badge removed.'); loadPending();
 }
 
 // ── Reports ───────────────────────────────────────────────────
 async function loadReports() {
-  const reports=await apiFetch('GET','mod/reports',null,adminToken);
+  const reports=await apiFetch('GET','mod/reports',null);
   const tb=document.getElementById('reports-tbody');
   const badge=document.getElementById('report-count-badge');
   if(!Array.isArray(reports)||!reports.length){
@@ -455,14 +449,14 @@ async function loadReports() {
 }
 async function dismissReport(id, action) {
   const ep=action==='dismiss'?`mod/reports/${id}/dismiss`:`mod/reports/${id}/reviewed`;
-  const res=await apiFetch('POST',ep,{},adminToken);
+  const res=await apiFetch('POST',ep,{});
   if(res.error){toast(res.error,true);return;}
   toast(action==='dismiss'?'Report dismissed.':'Marked as reviewed.'); loadReports();
 }
 
 // ── All Calendars ─────────────────────────────────────────────
 async function loadAllCals() {
-  const cals=await apiFetch('GET','calendars?all=1',null,adminToken);
+  const cals=await apiFetch('GET','calendars?all=1',null);
   allCalendarsData=Array.isArray(cals)?cals:[];
   document.getElementById('s-total').textContent=allCalendarsData.length;
   document.getElementById('s-approved').textContent=allCalendarsData.filter(c=>c.approval_status==='approved').length;
@@ -494,14 +488,14 @@ function filterAllCals(q) {
 }
 async function hardDelete(id, name) {
   if(!confirm(`Permanently delete "${name}" and all its events? This cannot be undone.`))return;
-  const res=await apiFetch('DELETE',`admin/calendars/${id}`,null,adminToken);
+  const res=await apiFetch('DELETE',`admin/calendars/${id}`,null);
   if(res.error){toast(res.error,true);return;}
   toast('Calendar permanently deleted.'); loadAllCals();
 }
 
 // ── Users ─────────────────────────────────────────────────────
 async function loadUsers() {
-  const users=await apiFetch('GET','admin/users',null,adminToken);
+  const users=await apiFetch('GET','admin/users',null);
   allUsersData=Array.isArray(users)?users:[];
   renderUsers(allUsersData);
 }
@@ -534,37 +528,39 @@ function filterUsers(q) {
 }
 async function changeRole(uid, role) {
   if(!role) return;
-  const res=await apiFetch('POST',`admin/users/${uid}/role`,{role},adminToken);
+  const res=await apiFetch('POST',`admin/users/${uid}/role`,{role});
   if(res.error){toast(res.error,true);return;}
   toast(`Role updated to ${role}`); loadUsers();
 }
 async function toggleUserBadge(uid, grant) {
-  const res=await apiFetch('POST',`admin/users/${uid}/badge`,{grant:!!grant},adminToken);
+  const res=await apiFetch('POST',`admin/users/${uid}/badge`,{grant:!!grant});
   if(res.error){toast(res.error,true);return;}
   toast(grant?'Badge granted':'Badge removed'); loadUsers();
 }
 function openBan(uid) { activeUserId=uid; document.getElementById('ban-reason').value=''; document.getElementById('modal-ban').style.display='flex'; }
 async function doBan() {
-  const res=await apiFetch('POST',`admin/users/${activeUserId}/ban`,{reason:document.getElementById('ban-reason').value.trim()},adminToken);
+  const res=await apiFetch('POST',`admin/users/${activeUserId}/ban`,{reason:document.getElementById('ban-reason').value.trim()});
   if(res.error){toast(res.error,true);return;}
   document.getElementById('modal-ban').style.display='none'; toast('User banned.'); loadUsers();
 }
 async function unban(uid) {
-  const res=await apiFetch('POST',`admin/users/${uid}/unban`,{},adminToken);
+  const res=await apiFetch('POST',`admin/users/${uid}/unban`,{});
   if(res.error){toast(res.error,true);return;}
   toast('User unbanned.'); loadUsers();
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-async function apiFetch(method, route, body=null, token=null) {
-  const opts={method,headers:{'Content-Type':'application/json'}};
-  if(token) opts.headers['Authorization']='Bearer '+token;
+async function apiFetch(method, route, body=null) {
+  const opts={method,headers:{'Content-Type':'application/json','X-Admin-Key':ADMIN_PASSWORD}};
   if(body) opts.body=JSON.stringify(body);
   try{const r=await fetch(`${API}/api/${route}`,opts); return await r.json();}
   catch(e){return {error:e.message};}
 }
 function toast(msg,isErr=false){const t=document.getElementById('toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',2800);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Load data after unlock
+if (adminUnlocked) loadAll();
 </script>
 </body>
 </html>
